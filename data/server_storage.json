@@ -1,0 +1,1601 @@
+{
+  "streams": {
+    "ch_m3u_100": {
+      "epg_id": "",
+      "id": "ch_m3u_100",
+      "logo_url": "",
+      "name": "SAGLIK CHANEL",
+      "source_url": "https://live.euromediacenter.com/saglikchannel/tracks-v1a1/mono.m3u8",
+      "source_urls": [
+        "https://live.euromediacenter.com/saglikchannel/tracks-v1a1/mono.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_102": {
+      "epg_id": "",
+      "id": "ch_m3u_102",
+      "logo_url": "",
+      "name": "ALANYA ATV",
+      "source_url": "https://helga.iptv2022.com/sh/AlanyaTV/tracks-v1a1/mono.m3u8",
+      "source_urls": [
+        "https://helga.iptv2022.com/sh/AlanyaTV/tracks-v1a1/mono.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_103": {
+      "epg_id": "",
+      "id": "ch_m3u_103",
+      "logo_url": "",
+      "name": "HÜR TV",
+      "source_url": "https://live.euromediacenter.com/hurtv/tracks-v1a1/mono.m3u8",
+      "source_urls": [
+        "https://live.euromediacenter.com/hurtv/tracks-v1a1/mono.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_104": {
+      "epg_id": "",
+      "id": "ch_m3u_104",
+      "logo_url": "",
+      "name": "BRÜKSEL TÜRK",
+      "source_url": "https://live.euromediacenter.com/brukselturk/tracks-v1a1/mono.m3u8",
+      "source_urls": [
+        "https://live.euromediacenter.com/brukselturk/tracks-v1a1/mono.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_108": {
+      "epg_id": "TV8.tr",
+      "id": "ch_m3u_108",
+      "logo_url": "https://i.ibb.co/Kr5SFY1/tv8.png",
+      "name": "TV 8",
+      "source_url": "https://rkhubpaomb.turknet.ercdn.net/fwjkgpasof/tv8/tv8_1080p.m3u8",
+      "source_urls": [
+        "https://rkhubpaomb.turknet.ercdn.net/fwjkgpasof/tv8/tv8_1080p.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_109": {
+      "epg_id": "KANAL7.tr",
+      "id": "ch_m3u_109",
+      "logo_url": "https://e7.pngegg.com/pngimages/361/407/png-clipart-kanal-7-high-definition-television-television-channel-streaming-television-others-television-angle-thumbnail.png",
+      "name": "KANAL 7",
+      "source_url": "https://kanal7-live.daioncdn.net/kanal7/kanal7_1080p.m3u8",
+      "source_urls": [
+        "https://kanal7-live.daioncdn.net/kanal7/kanal7_1080p.m3u8",
+        "https://kanal7-live.daioncdn.net/kanal7/kanal7.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_110": {
+      "epg_id": "",
+      "id": "ch_m3u_110",
+      "logo_url": "https://i.ibb.co/s3gJCGL/360.png",
+      "name": "360 TV",
+      "source_url": "https://turkmedya-live.ercdn.net/tv360/tv360_720p.m3u8",
+      "source_urls": [
+        "https://turkmedya-live.ercdn.net/tv360/tv360_720p.m3u8",
+        "https://turkmedya-live.ercdn.net/tv360/tv360.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_112": {
+      "epg_id": "HABERTURK.tr",
+      "id": "ch_m3u_112",
+      "logo_url": "https://upload.wikimedia.org/wikipedia/commons/7/78/HABERturk_logo.png",
+      "name": "HABER TURK",
+      "source_url": "https://rmtftbjlne.turknet.ercdn.net/bpeytmnqyp/haberturktv/haberturktv_1080p.m3u8",
+      "source_urls": [
+        "https://rmtftbjlne.turknet.ercdn.net/bpeytmnqyp/haberturktv/haberturktv_1080p.m3u8",
+        "https://ciner.daioncdn.net/haberturktv/haberturktv_1080p.m3u8?sid=8b65nnyxpdwm\u0026app=c98ab0b0-50cc-495b-bb37-778e91f5ff5b\u0026ce=2"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_114": {
+      "epg_id": "",
+      "id": "ch_m3u_114",
+      "logo_url": "https://i.ibb.co/tHQpWvn/24.png",
+      "name": "24 TV",
+      "source_url": "https://turkmedya-live.ercdn.net/tv24/tv24_720p.m3u8",
+      "source_urls": [
+        "https://turkmedya-live.ercdn.net/tv24/tv24_720p.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_117": {
+      "epg_id": "MinikaGO.tr",
+      "id": "ch_m3u_117",
+      "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/MinikaGO_logo.png/1536px-MinikaGO_logo.png?20200428070543",
+      "name": "MINIKA GO",
+      "source_url": "http://rnttwmjcin.turknet.ercdn.net/lcpmvefbyo/minikago/minikago_720p.m3u8?tv=1",
+      "source_urls": [
+        "http://rnttwmjcin.turknet.ercdn.net/lcpmvefbyo/minikago/minikago_720p.m3u8?tv=1",
+        "https://rnttwmjcin.turknet.ercdn.net/lcpmvefbyo/minikago/minikago_720p.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_134": {
+      "epg_id": "NTV.tr",
+      "id": "ch_m3u_134",
+      "logo_url": "https://i.ibb.co/gRR1zpm/ntv.png",
+      "name": "NTV",
+      "source_url": "https://dogus.daioncdn.net/ntv/ntv_720p.m3u8",
+      "source_urls": [
+        "https://dogus.daioncdn.net/ntv/ntv_720p.m3u8",
+        "https://dogus.daioncdn.net/ntv/ntv_1080p.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_153": {
+      "epg_id": "MovieSmartTurk.tr",
+      "id": "ch_m3u_153",
+      "logo_url": "https://dsmart-static-v2.ercdn.net//resize-width/400//content/e/ZI/13863/Thumbnail.png?v=636987856299906443",
+      "name": "Moviesmart Türk HD",
+      "source_url": "https://ds.ayakkabiparti.lol/mvturk/index.m3u8",
+      "source_urls": [
+        "https://ds.ayakkabiparti.lol/mvturk/index.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_154": {
+      "epg_id": "",
+      "id": "ch_m3u_154",
+      "logo_url": "https://feo.kablowebtv.com/resize/168A635D265A4328C2883FB4CD8FF/0/0/Vod/HLS/7d58e86c-d38e-4ef5-8ee0-fda0a7e65914.png",
+      "name": "Film Screen HD",
+      "source_url": "https://edge-e3.evrideo.tv/f2dcbecf-5af0-47db-a82e-032112050a23_1000027346_HLS/manifest.m3u8",
+      "source_urls": [
+        "https://edge-e3.evrideo.tv/f2dcbecf-5af0-47db-a82e-032112050a23_1000027346_HLS/manifest.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_155": {
+      "epg_id": "",
+      "id": "ch_m3u_155",
+      "logo_url": "https://tvplus.com.tr/_next/image?url=https%3A%2F%2Fgbzottvsc20.tvplus.com.tr%3A33207%2FCPS%2Fimages%2Funiversal%2Ffilm%2Flogo%2F202506%2F20250623%2F94%2F1009257324535eb9542c_op_0_XL.webp\u0026w=128\u0026q=75",
+      "name": "Tabii TV HD",
+      "source_url": "https://ceokzokgtd.erbvr.com/tabiitv/tabiitv.m3u8",
+      "source_urls": [
+        "https://ceokzokgtd.erbvr.com/tabiitv/tabiitv.m3u8",
+        "https://ceokzokgtd.erbvr.com/tabiitv/tabiitv_1080p.m3u8?sid=IUlyczhCBES7nvvwJSIycw\u0026bvr_flags=10\u0026bvr_ch=tabiitv\u0026bvr_bw=2800000"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_158": {
+      "epg_id": "360.tr",
+      "id": "ch_m3u_158",
+      "logo_url": "",
+      "name": "360",
+      "source_url": "https://turkmedya-live.ercdn.net/tv360/tv360_720p.m3u8",
+      "source_urls": [
+        "https://turkmedya-live.ercdn.net/tv360/tv360_720p.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_159": {
+      "epg_id": "",
+      "id": "ch_m3u_159",
+      "logo_url": "",
+      "name": "TV4",
+      "source_url": "https://turkmedya-live.ercdn.net/tv4/tv4.m3u8",
+      "source_urls": [
+        "https://turkmedya-live.ercdn.net/tv4/tv4.m3u8",
+        "https://turkmedya-live.ercdn.net/tv4/tv4_720p.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_16": {
+      "epg_id": "HalkTV.tr",
+      "id": "ch_m3u_16",
+      "logo_url": "https://raw.githubusercontent.com/tv-logo/tv-logos/refs/heads/main/countries/turkey/halk-tv-tr.png",
+      "name": "HALK TV",
+      "source_url": "https://halktv-live.daioncdn.net/halktv/halktv.m3u8",
+      "source_urls": [
+        "https://halktv-live.daioncdn.net/halktv/halktv.m3u8",
+        "https://halktv-live.daioncdn.net/halktv/halktv_1080p.m3u8",
+        "https://halktv.daioncdn.net/halktv/halktv_1080p.m3u8?app=c86957d3-74a7-44da-9ad2-dc358c769609"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_164": {
+      "epg_id": "TGRTHaber.tr",
+      "id": "ch_m3u_164",
+      "logo_url": "",
+      "name": "TGRT HABER",
+      "source_url": "https://canli.tgrthaber.com/tgrt.m3u8",
+      "source_urls": [
+        "https://canli.tgrthaber.com/tgrt.m3u8",
+        "https://tgrthaber-live.daioncdn.net/tgrthaber/tgrthaber.m3u8",
+        "https://tgrthaber-live.daioncdn.net/tgrthaber/tgrthaber_1080p.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_166": {
+      "epg_id": "",
+      "id": "ch_m3u_166",
+      "logo_url": "",
+      "name": "24",
+      "source_url": "https://turkmedya-live.ercdn.net/tv24/tv24_720p.m3u8",
+      "source_urls": [
+        "https://turkmedya-live.ercdn.net/tv24/tv24_720p.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_17": {
+      "epg_id": "TRTHaber.tr",
+      "id": "ch_m3u_17",
+      "logo_url": "https://raw.githubusercontent.com/tv-logo/tv-logos/refs/heads/main/countries/turkey/trt-haber-tr.png",
+      "name": "TRT HABER",
+      "source_url": "https://tv-trthaber.medya.trt.com.tr/master_720.m3u8",
+      "source_urls": [
+        "https://tv-trthaber.medya.trt.com.tr/master_720.m3u8",
+        "https://tv-trthaber.medya.trt.com.tr/master.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_177": {
+      "epg_id": "TRT1.tr",
+      "id": "ch_m3u_177",
+      "logo_url": "",
+      "name": "TRT 1",
+      "source_url": "https://tv-trt1.medya.trt.com.tr/master_720.m3u8",
+      "source_urls": [
+        "https://tv-trt1.medya.trt.com.tr/master_720.m3u8",
+        "https://tv-trt1.medya.trt.com.tr/master.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_179": {
+      "epg_id": "",
+      "id": "ch_m3u_179",
+      "logo_url": "",
+      "name": "EURO D HD SS",
+      "source_url": "https://live.duhnet.tv/S2/HLS_LIVE/eurodnp/track_4_1000/playlist.m3u8",
+      "source_urls": [
+        "https://live.duhnet.tv/S2/HLS_LIVE/eurodnp/track_4_1000/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_180": {
+      "epg_id": "TRT2.tr",
+      "id": "ch_m3u_180",
+      "logo_url": "",
+      "name": "TRT 2",
+      "source_url": "https://tv-trt2.medya.trt.com.tr/master_720.m3u8",
+      "source_urls": [
+        "https://tv-trt2.medya.trt.com.tr/master_720.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_190": {
+      "epg_id": "FBTV.tr",
+      "id": "ch_m3u_190",
+      "logo_url": "",
+      "name": "FB TV",
+      "source_url": "https://1hskrdto.rocketcdn.com/fenerbahcetv.smil/playlist.m3u8",
+      "source_urls": [
+        "https://1hskrdto.rocketcdn.com/fenerbahcetv.smil/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_191": {
+      "epg_id": "",
+      "id": "ch_m3u_191",
+      "logo_url": "",
+      "name": "TJK TV",
+      "source_url": "https://tjktv-live.tjk.org/tjktv_1080p.m3u8",
+      "source_urls": [
+        "https://tjktv-live.tjk.org/tjktv_1080p.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_21": {
+      "epg_id": "StarTV.tr",
+      "id": "ch_m3u_21",
+      "logo_url": "https://raw.githubusercontent.com/tv-logo/tv-logos/refs/heads/main/countries/turkey/star-tv-tr.png",
+      "name": "STAR TV HD",
+      "source_url": "https://dogus.daioncdn.net/startv/startv.m3u8?ce=3\u0026app=1740db13-3ee9-4858-8d2c-b1a9cfaa3718",
+      "source_urls": [
+        "https://dogus.daioncdn.net/startv/startv.m3u8?ce=3\u0026app=1740db13-3ee9-4858-8d2c-b1a9cfaa3718",
+        "http://dygvideo.dygdigital.com/live/hls/startv4puhu?m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_216": {
+      "epg_id": "TV8,5.tr",
+      "id": "ch_m3u_216",
+      "logo_url": "",
+      "name": "TV 8.5",
+      "source_url": "https://tv8.daioncdn.net/tv8bucuk/tv8bucuk_1080p.m3u8?app=tv8bucuk_web\u0026ce=3",
+      "source_urls": [
+        "https://tv8.daioncdn.net/tv8bucuk/tv8bucuk_1080p.m3u8?app=tv8bucuk_web\u0026ce=3",
+        "https://rkhubpaomb.turknet.ercdn.net/fwjkgpasof/tv8bucuk/tv8bucuk_1080p.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_22": {
+      "epg_id": "DiyanetTV.tr",
+      "id": "ch_m3u_22",
+      "logo_url": "https://raw.githubusercontent.com/tv-logo/tv-logos/refs/heads/main/countries/turkey/diyanet-tv-tr.png",
+      "name": "DIYANET TV",
+      "source_url": "https://eustr73.mediatriple.net/videoonlylive/mtikoimxnztxlive/broadcast_5e3bf95a47e07.smil/playlist.m3u8",
+      "source_urls": [
+        "https://eustr73.mediatriple.net/videoonlylive/mtikoimxnztxlive/broadcast_5e3bf95a47e07.smil/playlist.m3u8",
+        "http://eustr73.mediatriple.net/videoonlylive/mtikoimxnztxlive/broadcast_5e3bf95a47e07.smil/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_220": {
+      "epg_id": "UlkeTV.tr",
+      "id": "ch_m3u_220",
+      "logo_url": "",
+      "name": "ÜLKE TV",
+      "source_url": "https://livetv.radyotvonline.net/kanal7live/ulketv/playlist.m3u8",
+      "source_urls": [
+        "https://livetv.radyotvonline.net/kanal7live/ulketv/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_223": {
+      "epg_id": "TELE1.tr",
+      "id": "ch_m3u_223",
+      "logo_url": "",
+      "name": "TELE1",
+      "source_url": "https://tele1-live.ercdn.net/tele1/tele1_1080p.m3u8",
+      "source_urls": [
+        "https://tele1-live.ercdn.net/tele1/tele1_1080p.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_225": {
+      "epg_id": "",
+      "id": "ch_m3u_225",
+      "logo_url": "",
+      "name": "BENGÜ TÜRK",
+      "source_url": "https://ensonhaber-live.ercdn.net/benguturk/benguturk.m3u8",
+      "source_urls": [
+        "https://ensonhaber-live.ercdn.net/benguturk/benguturk.m3u8",
+        "https://tv.ensonhaber.com/benguturk/benguturk_720p.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_226": {
+      "epg_id": "",
+      "id": "ch_m3u_226",
+      "logo_url": "",
+      "name": "EKOL TV",
+      "source_url": "https://ekoltv-live.ercdn.net/ekoltv/ekoltv.m3u8",
+      "source_urls": [
+        "https://ekoltv-live.ercdn.net/ekoltv/ekoltv.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_228": {
+      "epg_id": "",
+      "id": "ch_m3u_228",
+      "logo_url": "",
+      "name": "HABER 61",
+      "source_url": "http://win8.yayin.com.tr/haber61tv/smil:haber61tv.smil/playlist.m3u8",
+      "source_urls": [
+        "http://win8.yayin.com.tr/haber61tv/smil:haber61tv.smil/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_234": {
+      "epg_id": "",
+      "id": "ch_m3u_234",
+      "logo_url": "",
+      "name": "KRAL POP TV FHD",
+      "source_url": "http://dygvideo.dygdigital.com/live/hls/kralpop",
+      "source_urls": [
+        "http://dygvideo.dygdigital.com/live/hls/kralpop"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_235": {
+      "epg_id": "",
+      "id": "ch_m3u_235",
+      "logo_url": "",
+      "name": "DREAM TURK",
+      "source_url": "https://live.duhnet.tv//S2/HLS_LIVE/dreamturknp/playlist.m3u8",
+      "source_urls": [
+        "https://live.duhnet.tv//S2/HLS_LIVE/dreamturknp/playlist.m3u8",
+        "https://live.duhnet.tv/S2/HLS_LIVE/dreamturknp/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_236": {
+      "epg_id": "",
+      "id": "ch_m3u_236",
+      "logo_url": "",
+      "name": "NR 1 TURK",
+      "source_url": "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/broadcast_5c9e187770143.smil/chunklist_b400000.m3u8",
+      "source_urls": [
+        "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/broadcast_5c9e187770143.smil/chunklist_b400000.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_237": {
+      "epg_id": "",
+      "id": "ch_m3u_237",
+      "logo_url": "",
+      "name": "POWER LOVE",
+      "source_url": "https://listen.powerapp.com.tr/plove/love.smil/playlist.m3u8",
+      "source_urls": [
+        "https://listen.powerapp.com.tr/plove/love.smil/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_238": {
+      "epg_id": "",
+      "id": "ch_m3u_238",
+      "logo_url": "",
+      "name": "NR 1 DAMAR",
+      "source_url": "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/broadcast_5c9e19877b340.smil/chunklist_b400000.m3u8?md5=api5VtN5dEXl5cvRHMQBNQ\u0026expires=1696713505",
+      "source_urls": [
+        "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/broadcast_5c9e19877b340.smil/chunklist_b400000.m3u8?md5=api5VtN5dEXl5cvRHMQBNQ\u0026expires=1696713505",
+        "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e198784bdc_1/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_239": {
+      "epg_id": "",
+      "id": "ch_m3u_239",
+      "logo_url": "",
+      "name": "NR 1 TV",
+      "source_url": "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/broadcast_5c9e17cd59e8b.smil/chunklist_b400000.m3u8",
+      "source_urls": [
+        "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/broadcast_5c9e17cd59e8b.smil/chunklist_b400000.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_24": {
+      "epg_id": "",
+      "id": "ch_m3u_24",
+      "logo_url": "https://raw.githubusercontent.com/tv-logo/tv-logos/refs/heads/main/countries/turkey/eba-tv-ortaokul-tr.png",
+      "name": "TRT EBA ORTAKUL",
+      "source_url": "https://tv-e-okul01.medya.trt.com.tr/master.m3u8",
+      "source_urls": [
+        "https://tv-e-okul01.medya.trt.com.tr/master.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_240": {
+      "epg_id": "",
+      "id": "ch_m3u_240",
+      "logo_url": "",
+      "name": "POWER TURK",
+      "source_url": "https://livetv.powerapp.com.tr/powerturkTV/powerturkhd.smil/playlists.m3u8",
+      "source_urls": [
+        "https://livetv.powerapp.com.tr/powerturkTV/powerturkhd.smil/playlists.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_241": {
+      "epg_id": "",
+      "id": "ch_m3u_241",
+      "logo_url": "",
+      "name": "POWER TURK SLOW",
+      "source_url": "https://listen.powerapp.com.tr/pturkslow/slow.smil/playlist.m3u8",
+      "source_urls": [
+        "https://listen.powerapp.com.tr/pturkslow/slow.smil/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_242": {
+      "epg_id": "",
+      "id": "ch_m3u_242",
+      "logo_url": "",
+      "name": "POWER TV AKUSTiK",
+      "source_url": "https://listen.powerapp.com.tr/pturkakustik/akustik.smil/playlist.m3u8",
+      "source_urls": [
+        "https://listen.powerapp.com.tr/pturkakustik/akustik.smil/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_243": {
+      "epg_id": "",
+      "id": "ch_m3u_243",
+      "logo_url": "",
+      "name": "POWER TURK TAPTAZE",
+      "source_url": "https://listen.powerapp.com.tr/pturktaptaze/taptaze.smil/playlist.m3u8",
+      "source_urls": [
+        "https://listen.powerapp.com.tr/pturktaptaze/taptaze.smil/playlist.m3u8",
+        "http://livetv.powerapp.com.tr/pturktaptaze/taptaze.smil/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_244": {
+      "epg_id": "",
+      "id": "ch_m3u_244",
+      "logo_url": "",
+      "name": "POWER DANCE",
+      "source_url": "https://listen.powerapp.com.tr/dance/dance.smil/playlist.m3u8",
+      "source_urls": [
+        "https://listen.powerapp.com.tr/dance/dance.smil/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_249": {
+      "epg_id": "",
+      "id": "ch_m3u_249",
+      "logo_url": "",
+      "name": "MELTEM TV",
+      "source_url": "https://vhxyrsly.rocketcdn.com/meltemtv/chunklist.m3u8",
+      "source_urls": [
+        "https://vhxyrsly.rocketcdn.com/meltemtv/chunklist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_25": {
+      "epg_id": "",
+      "id": "ch_m3u_25",
+      "logo_url": "https://raw.githubusercontent.com/tv-logo/tv-logos/refs/heads/main/countries/turkey/trt-cocuk-tr.png",
+      "name": "TRT COCUK DIYANET",
+      "source_url": "https://tv-trtdiyanetcocuk.medya.trt.com.tr/master_720.m3u8",
+      "source_urls": [
+        "https://tv-trtdiyanetcocuk.medya.trt.com.tr/master_720.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_251": {
+      "epg_id": "",
+      "id": "ch_m3u_251",
+      "logo_url": "",
+      "name": "DENiZ POSTASI TV",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_denizpostasi/denizpostasi/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_denizpostasi/denizpostasi/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_252": {
+      "epg_id": "",
+      "id": "ch_m3u_252",
+      "logo_url": "",
+      "name": "İSVİÇRE TV",
+      "source_url": "https://i41.ozelip.com:3269/hybrid/play.m3u8",
+      "source_urls": [
+        "https://i41.ozelip.com:3269/hybrid/play.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_253": {
+      "epg_id": "",
+      "id": "ch_m3u_253",
+      "logo_url": "",
+      "name": "DİZİ TV",
+      "source_url": "https://playlist.fasttvcdn.com/pl/rfrk9821hdy9dayo8wfyha/dizi-tv/playlist/0.m3u8",
+      "source_urls": [
+        "https://playlist.fasttvcdn.com/pl/rfrk9821hdy9dayo8wfyha/dizi-tv/playlist/0.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_256": {
+      "epg_id": "",
+      "id": "ch_m3u_256",
+      "logo_url": "",
+      "name": "LALEGUL TV",
+      "source_url": "https://lbl.netmedya.net/hls/lalegultv.m3u8",
+      "source_urls": [
+        "https://lbl.netmedya.net/hls/lalegultv.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_257": {
+      "epg_id": "",
+      "id": "ch_m3u_257",
+      "logo_url": "",
+      "name": "SEMERKAND TV",
+      "source_url": "http://b01c02nl.mediatriple.net/videoonlylive/mtisvwurbfcyslive/broadcast_58d915bd40efc.smil/playlist.m3u8",
+      "source_urls": [
+        "http://b01c02nl.mediatriple.net/videoonlylive/mtisvwurbfcyslive/broadcast_58d915bd40efc.smil/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_259": {
+      "epg_id": "",
+      "id": "ch_m3u_259",
+      "logo_url": "",
+      "name": "REHBER TV",
+      "source_url": "https://cdn4.yayin.com.tr/rehbertv/tracks-v1a1/mono.m3u8",
+      "source_urls": [
+        "https://cdn4.yayin.com.tr/rehbertv/tracks-v1a1/mono.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_26": {
+      "epg_id": "",
+      "id": "ch_m3u_26",
+      "logo_url": "https://raw.githubusercontent.com/tv-logo/tv-logos/refs/heads/main/countries/turkey/trt-avaz-tr.png",
+      "name": "TRT AVAZ",
+      "source_url": "https://tv-trtavaz.medya.trt.com.tr/master.m3u8",
+      "source_urls": [
+        "https://tv-trtavaz.medya.trt.com.tr/master.m3u8",
+        "https://tv-trtavaz.medya.trt.com.tr/master_720.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_261": {
+      "epg_id": "",
+      "id": "ch_m3u_261",
+      "logo_url": "",
+      "name": "AL ZAHRA TURK TV",
+      "source_url": "https://live.al-zahratv.com/live/playlist.m3u8",
+      "source_urls": [
+        "https://live.al-zahratv.com/live/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_262": {
+      "epg_id": "",
+      "id": "ch_m3u_262",
+      "logo_url": "",
+      "name": "MC TV",
+      "source_url": "https://rrr.sz.xlcdn.com/?account=mceutv\u0026file=mc2\u0026type=live\u0026service=wowza\u0026protocol=https\u0026output=playlist.m3u8",
+      "source_urls": [
+        "https://rrr.sz.xlcdn.com/?account=mceutv\u0026file=mc2\u0026type=live\u0026service=wowza\u0026protocol=https\u0026output=playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_263": {
+      "epg_id": "",
+      "id": "ch_m3u_263",
+      "logo_url": "",
+      "name": "MUKABELE TV",
+      "source_url": "https://playlist.fasttvcdn.com/pl/rfrk9821hdy9dayo8wfyha/mukabele-tv/playlist.m3u8",
+      "source_urls": [
+        "https://playlist.fasttvcdn.com/pl/rfrk9821hdy9dayo8wfyha/mukabele-tv/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_266": {
+      "epg_id": "",
+      "id": "ch_m3u_266",
+      "logo_url": "",
+      "name": "TRT DİYANET ÇOCUK",
+      "source_url": "https://tv-trtdiyanetcocuk.medya.trt.com.tr/master_720.m3u8",
+      "source_urls": [
+        "https://tv-trtdiyanetcocuk.medya.trt.com.tr/master_720.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_268": {
+      "epg_id": "",
+      "id": "ch_m3u_268",
+      "logo_url": "",
+      "name": "AKSU TV",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_aksutv/aksutv/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_aksutv/aksutv/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_269": {
+      "epg_id": "",
+      "id": "ch_m3u_269",
+      "logo_url": "",
+      "name": "ANADOLUNET TV",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_anadolunet/anadolunet/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_anadolunet/anadolunet/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_27": {
+      "epg_id": "TRTKurdi.tr",
+      "id": "ch_m3u_27",
+      "logo_url": "https://raw.githubusercontent.com/tv-logo/tv-logos/refs/heads/main/countries/turkey/trt-kurdi-tr.png",
+      "name": "TRT KURDI",
+      "source_url": "https://tv-trtkurdi.medya.trt.com.tr/master.m3u8",
+      "source_urls": [
+        "https://tv-trtkurdi.medya.trt.com.tr/master.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_273": {
+      "epg_id": "",
+      "id": "ch_m3u_273",
+      "logo_url": "",
+      "name": "BRTV",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_brtv/brtv/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_brtv/brtv/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_276": {
+      "epg_id": "",
+      "id": "ch_m3u_276",
+      "logo_url": "",
+      "name": "ÇİFTÇİ TV",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_ciftcitv/ciftcitv/chunks.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_ciftcitv/ciftcitv/chunks.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_277": {
+      "epg_id": "",
+      "id": "ch_m3u_277",
+      "logo_url": "",
+      "name": "DERiN TV",
+      "source_url": "https://cdn1-derintv.yayin.com.tr/derintv/derintv/chunklist_w1486394141_b1796000.m3u8",
+      "source_urls": [
+        "https://cdn1-derintv.yayin.com.tr/derintv/derintv/chunklist_w1486394141_b1796000.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_279": {
+      "epg_id": "",
+      "id": "ch_m3u_279",
+      "logo_url": "",
+      "name": "ERCİYES TV",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_erciyestv/erciyestv/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_erciyestv/erciyestv/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_28": {
+      "epg_id": "TRTArabi.tr",
+      "id": "ch_m3u_28",
+      "logo_url": "https://raw.githubusercontent.com/tv-logo/tv-logos/refs/heads/main/countries/turkey/trt-arabi-tr.png",
+      "name": "TRT ARABI",
+      "source_url": "https://tv-trtarabi.medya.trt.com.tr/master.m3u8",
+      "source_urls": [
+        "https://tv-trtarabi.medya.trt.com.tr/master.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_280": {
+      "epg_id": "",
+      "id": "ch_m3u_280",
+      "logo_url": "",
+      "name": "ER TV",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_ertv_new/ertv/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_ertv_new/ertv/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_281": {
+      "epg_id": "",
+      "id": "ch_m3u_281",
+      "logo_url": "",
+      "name": "ES TV",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_estv/estv/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_estv/estv/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_282": {
+      "epg_id": "",
+      "id": "ch_m3u_282",
+      "logo_url": "",
+      "name": "ETV KAYSERi",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_etv/etv/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_etv/etv/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_284": {
+      "epg_id": "",
+      "id": "ch_m3u_284",
+      "logo_url": "",
+      "name": "GRT GAZİANTEP TV",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_grt/grt/chunks.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_grt/grt/chunks.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_286": {
+      "epg_id": "",
+      "id": "ch_m3u_286",
+      "logo_url": "",
+      "name": "GURBET 24 TV",
+      "source_url": "http://cdn-gurbet24.yayin.com.tr/gurbet24/gurbet24/playlist.m3u8",
+      "source_urls": [
+        "http://cdn-gurbet24.yayin.com.tr/gurbet24/gurbet24/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_287": {
+      "epg_id": "",
+      "id": "ch_m3u_287",
+      "logo_url": "",
+      "name": "HUNAT TV",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_hunattv/hunattv/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_hunattv/hunattv/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_289": {
+      "epg_id": "",
+      "id": "ch_m3u_289",
+      "logo_url": "",
+      "name": "İZMİR TIME 35 TV",
+      "source_url": "https://cdn-time35tv.yayin.com.tr/time35tv/time35tv/playlist.m3u8",
+      "source_urls": [
+        "https://cdn-time35tv.yayin.com.tr/time35tv/time35tv/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_29": {
+      "epg_id": "TRTWorld.tr",
+      "id": "ch_m3u_29",
+      "logo_url": "https://raw.githubusercontent.com/tv-logo/tv-logos/refs/heads/main/countries/turkey/trt-world-tr.png",
+      "name": "TRT WORLD",
+      "source_url": "https://tv-trtworld.medya.trt.com.tr/master.m3u8",
+      "source_urls": [
+        "https://tv-trtworld.medya.trt.com.tr/master.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_290": {
+      "epg_id": "",
+      "id": "ch_m3u_290",
+      "logo_url": "",
+      "name": "İKRA TV",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_diyartv/diyartv/chunks.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_diyartv/diyartv/chunks.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_295": {
+      "epg_id": "",
+      "id": "ch_m3u_295",
+      "logo_url": "",
+      "name": "KANAL 19",
+      "source_url": "https://live.euromediacenter.com/kanal19/tracks-v1a1/mono.m3u8",
+      "source_urls": [
+        "https://live.euromediacenter.com/kanal19/tracks-v1a1/mono.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_3": {
+      "epg_id": "NOWTV.tr",
+      "id": "ch_m3u_3",
+      "logo_url": "",
+      "name": "NOW TV",
+      "source_url": "https://uycyyuuzyh.turknet.ercdn.net/nphindgytw/nowtv/nowtv.m3u8",
+      "source_urls": [
+        "https://uycyyuuzyh.turknet.ercdn.net/nphindgytw/nowtv/nowtv.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_30": {
+      "epg_id": "TRTMüzik.tr",
+      "id": "ch_m3u_30",
+      "logo_url": "https://raw.githubusercontent.com/tv-logo/tv-logos/refs/heads/main/countries/turkey/trt-muzik-tr.png",
+      "name": "TRT MUZIK",
+      "source_url": "https://tv-trtmuzik.medya.trt.com.tr/master.m3u8",
+      "source_urls": [
+        "https://tv-trtmuzik.medya.trt.com.tr/master.m3u8",
+        "https://tv-trtmuzik.medya.trt.com.tr/master_720.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_303": {
+      "epg_id": "",
+      "id": "ch_m3u_303",
+      "logo_url": "",
+      "name": "KANAL AVRUPA",
+      "source_url": "https://api-tv27.yayin.com.tr/kanalavrupa/index.m3u8",
+      "source_urls": [
+        "https://api-tv27.yayin.com.tr/kanalavrupa/index.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_304": {
+      "epg_id": "",
+      "id": "ch_m3u_304",
+      "logo_url": "",
+      "name": "KANAL PLUS",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_kanalplus/kanalplus/mpeg/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_kanalplus/kanalplus/mpeg/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_306": {
+      "epg_id": "",
+      "id": "ch_m3u_306",
+      "logo_url": "",
+      "name": "KANAL FIRAT",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_kanalfirat/kanalfirat/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_kanalfirat/kanalfirat/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_308": {
+      "epg_id": "",
+      "id": "ch_m3u_308",
+      "logo_url": "",
+      "name": "KTV KONYA",
+      "source_url": "https://cdn-ktvtv.yayin.com.tr/ktvtv/ktvtv/playlist.m3u8",
+      "source_urls": [
+        "https://cdn-ktvtv.yayin.com.tr/ktvtv/ktvtv/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_31": {
+      "epg_id": "EuroD.de",
+      "id": "ch_m3u_31",
+      "logo_url": "https://i.ibb.co/jMQTJmh/euro-d.png",
+      "name": "EURO D",
+      "source_url": "https://live.duhnet.tv/S2/HLS_LIVE/eurodnp/track_4_1000/playlist.m3u8",
+      "source_urls": [
+        "https://live.duhnet.tv/S2/HLS_LIVE/eurodnp/track_4_1000/playlist.m3u8",
+        "https://live.duhnet.tv/S2/HLS_LIVE/eurodnp/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_310": {
+      "epg_id": "",
+      "id": "ch_m3u_310",
+      "logo_url": "",
+      "name": "MAVi KARADENiZ TV",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_mavikaradeniz/mavikaradeniz/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_mavikaradeniz/mavikaradeniz/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_311": {
+      "epg_id": "",
+      "id": "ch_m3u_311",
+      "logo_url": "",
+      "name": "MERCAN TV",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_mercantv/mercantv/chunks.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_mercantv/mercantv/chunks.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_314": {
+      "epg_id": "",
+      "id": "ch_m3u_314",
+      "logo_url": "",
+      "name": "OLAY TURK",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_olayturk/olayturk/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_olayturk/olayturk/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_315": {
+      "epg_id": "",
+      "id": "ch_m3u_315",
+      "logo_url": "",
+      "name": "SUN TV",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_sunrtv/sunrtv/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_sunrtv/sunrtv/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_316": {
+      "epg_id": "",
+      "id": "ch_m3u_316",
+      "logo_url": "",
+      "name": "TEMPO TV",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_tempotv/tempotv/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_tempotv/tempotv/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_318": {
+      "epg_id": "",
+      "id": "ch_m3u_318",
+      "logo_url": "",
+      "name": "TON TV",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_tontv/tontv/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_tontv/tontv/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_32": {
+      "epg_id": "TRTTURK.tr",
+      "id": "ch_m3u_32",
+      "logo_url": "https://i.ibb.co/zN1BK38/trt-turk.png",
+      "name": "TRT TURK",
+      "source_url": "https://tv-trtturk.medya.trt.com.tr/master_720.m3u8",
+      "source_urls": [
+        "https://tv-trtturk.medya.trt.com.tr/master_720.m3u8",
+        "https://tv-trtturk.medya.trt.com.tr/master.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_321": {
+      "epg_id": "",
+      "id": "ch_m3u_321",
+      "logo_url": "",
+      "name": "TV 264",
+      "source_url": "https://b01c02nl.mediatriple.net/videoonlylive/mtdxkkitgbrckilive/broadcast_5ee244263fd6d.smil/playlist.m3u8?md5=qb_9l3erQIDqZMjbKfALzA\u0026expires=1651666386",
+      "source_urls": [
+        "https://b01c02nl.mediatriple.net/videoonlylive/mtdxkkitgbrckilive/broadcast_5ee244263fd6d.smil/playlist.m3u8?md5=qb_9l3erQIDqZMjbKfALzA\u0026expires=1651666386"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_322": {
+      "epg_id": "",
+      "id": "ch_m3u_322",
+      "logo_url": "",
+      "name": "UR FANATiK TV",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_urfanatiktv/urfanatiktv/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_urfanatiktv/urfanatiktv/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_325": {
+      "epg_id": "",
+      "id": "ch_m3u_325",
+      "logo_url": "",
+      "name": "VUSLAT TV",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_vuslattv/vuslattv/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_vuslattv/vuslattv/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_33": {
+      "epg_id": "",
+      "id": "ch_m3u_33",
+      "logo_url": "https://i.ibb.co/mbvwYMB/trt-cocuk.png",
+      "name": "TRT COCUK",
+      "source_url": "https://tv-trtcocuk.medya.trt.com.tr/master_720.m3u8",
+      "source_urls": [
+        "https://tv-trtcocuk.medya.trt.com.tr/master_720.m3u8",
+        "https://tv-trtcocuk.medya.trt.com.tr/master_1080.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_34": {
+      "epg_id": "",
+      "id": "ch_m3u_34",
+      "logo_url": "https://i.ibb.co/F4P8ddm/kanal-7-avrupa.png",
+      "name": "KANAL 7 AVRUPA",
+      "source_url": "https://livetv.radyotvonline.net/kanal7live/kanal7avr/chunklist.m3u8",
+      "source_urls": [
+        "https://livetv.radyotvonline.net/kanal7live/kanal7avr/chunklist.m3u8",
+        "https://livetv.radyotvonline.net/kanal7live/kanal7avr/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_35": {
+      "epg_id": "BEYAZTV.tr",
+      "id": "ch_m3u_35",
+      "logo_url": "https://i.ibb.co/1mftzTP/beyaz-tv.png",
+      "name": "BEYAZ TV",
+      "source_url": "https://beyaztv-live.daioncdn.net/beyaztv/beyaztv.m3u8",
+      "source_urls": [
+        "https://beyaztv-live.daioncdn.net/beyaztv/beyaztv.m3u8",
+        "https://beyaztv-live.daioncdn.net/beyaztv/beyaztv_1080p.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_36": {
+      "epg_id": "Teve2.tr",
+      "id": "ch_m3u_36",
+      "logo_url": "https://i.ibb.co/JRpJc2P/teve2.png",
+      "name": "TEVE 2",
+      "source_url": "https://live.duhnet.tv/S2/HLS_LIVE/teve2np/track_4_1000/playlist.m3u8",
+      "source_urls": [
+        "https://live.duhnet.tv/S2/HLS_LIVE/teve2np/track_4_1000/playlist.m3u8",
+        "https://ackaxsqacw.turknet.ercdn.net/ozfkfbbjba/teve2/teve2_1080p.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_369": {
+      "epg_id": "",
+      "id": "ch_m3u_369",
+      "logo_url": "https://i.ibb.co/sybLTBG/nr1.png",
+      "name": "NR1",
+      "source_url": "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e17cd6360b_1/playlist.m3u8",
+      "source_urls": [
+        "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e17cd6360b_1/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_37": {
+      "epg_id": "",
+      "id": "ch_m3u_37",
+      "logo_url": "https://i.ibb.co/9H3DMWz/tivi6.png",
+      "name": "TIVI 6",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_tivi6/tivi6/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_tivi6/tivi6/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_370": {
+      "epg_id": "",
+      "id": "ch_m3u_370",
+      "logo_url": "https://i.ibb.co/vk0bKz0/kral-pop.png",
+      "name": "KRAL POP",
+      "source_url": "http://dygvideo.dygdigital.com/live/hls/kralpop",
+      "source_urls": [
+        "http://dygvideo.dygdigital.com/live/hls/kralpop"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_371": {
+      "epg_id": "",
+      "id": "ch_m3u_371",
+      "logo_url": "https://i.ibb.co/5cJ0KtQ/nr1-ask.png",
+      "name": "NR1 ASK",
+      "source_url": "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e18f9cea15_1/playlist.m3u8",
+      "source_urls": [
+        "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e18f9cea15_1/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_373": {
+      "epg_id": "",
+      "id": "ch_m3u_373",
+      "logo_url": "https://i.ibb.co/kXFSFTN/nr1-dance.png",
+      "name": "NR1 DANCE",
+      "source_url": "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e2aa8acf44_1/playlist.m3u8",
+      "source_urls": [
+        "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e2aa8acf44_1/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_374": {
+      "epg_id": "",
+      "id": "ch_m3u_374",
+      "logo_url": "https://i.ibb.co/HV0x9JZ/fashion-one.png",
+      "name": "NR1 FASHION ONE",
+      "source_url": "http://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e2ee6997cb_1/playlist.m3u8",
+      "source_urls": [
+        "http://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e2ee6997cb_1/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_378": {
+      "epg_id": "",
+      "id": "ch_m3u_378",
+      "logo_url": "http://assets.tvcdn.net/15e32d50-4058-4fa6-a6e2-3e1dbc35c70c.jpeg",
+      "name": "Zarok TV Kürtçe",
+      "source_url": "https://zindikurmanci.zaroktv.com.tr/hls/stream.m3u8",
+      "source_urls": [
+        "https://zindikurmanci.zaroktv.com.tr/hls/stream.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_38": {
+      "epg_id": "HABERGLOBAL.tr",
+      "id": "ch_m3u_38",
+      "logo_url": "https://i.ibb.co/4ZpZWkf/haber-global.png",
+      "name": "HABER GLOBAL",
+      "source_url": "https://tv.ensonhaber.com/haberglobal/haberglobal_720p.m3u8",
+      "source_urls": [
+        "https://tv.ensonhaber.com/haberglobal/haberglobal_720p.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_39": {
+      "epg_id": "",
+      "id": "ch_m3u_39",
+      "logo_url": "",
+      "name": "KANAL 3",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_kanal3/kanal3/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_kanal3/kanal3/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_395": {
+      "epg_id": "",
+      "id": "ch_m3u_395",
+      "logo_url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcShGcdX8RFFGHnr6abeuEUZYKUW9xNNlW_GmQ\u0026s",
+      "name": "CINE 1",
+      "source_url": "https://canliyayin.cine1.com.tr/memfs/cbaef080-a742-4644-9e9e-2b9f6a5103c3.m3u8",
+      "source_urls": [
+        "https://canliyayin.cine1.com.tr/memfs/cbaef080-a742-4644-9e9e-2b9f6a5103c3.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_40": {
+      "epg_id": "",
+      "id": "ch_m3u_40",
+      "logo_url": "",
+      "name": "KANAL 12",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_kanal12/kanal12/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_kanal12/kanal12/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_403": {
+      "epg_id": "tagesschau24.de",
+      "id": "ch_m3u_403",
+      "logo_url": "https://upload.wikimedia.org/wikipedia/commons/2/20/Tagesschau24_Cornerlogo.png",
+      "name": "TAGESSCHAU 24",
+      "source_url": "https://tagesschau-live.ard-mcdn.de/tagesschau/live/hls/de/master.m3u8",
+      "source_urls": [
+        "https://tagesschau-live.ard-mcdn.de/tagesschau/live/hls/de/master.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_404": {
+      "epg_id": "NDR.de",
+      "id": "ch_m3u_404",
+      "logo_url": "https://upload.wikimedia.org/wikipedia/commons/d/de/NDR_Dachmarke.png",
+      "name": "NDR",
+      "source_url": "https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_nds/master.m3u8",
+      "source_urls": [
+        "https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_nds/master.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_409": {
+      "epg_id": "",
+      "id": "ch_m3u_409",
+      "logo_url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQJCVPXXnt4LxrLpCI6sRKfYu0bZkjHUg1WkQ\u0026s",
+      "name": "MAKKAH TV",
+      "source_url": "https://live.kwikmotion.com/sbrksaquranradiolive/srpksaquranradio/playlist.m3u8",
+      "source_urls": [
+        "https://live.kwikmotion.com/sbrksaquranradiolive/srpksaquranradio/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_41": {
+      "epg_id": "",
+      "id": "ch_m3u_41",
+      "logo_url": "",
+      "name": "KANAL 15",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_kanal15/kanal15/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_kanal15/kanal15/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_410": {
+      "epg_id": "",
+      "id": "ch_m3u_410",
+      "logo_url": "https://e7.pngegg.com/pngimages/758/259/png-clipart-medina-mecca-television-channel-streaming-media-others-miscellaneous-television.png",
+      "name": "MADINAH TV",
+      "source_url": "https://cdn-globecast.akamaized.net/live/eds/saudi_sunnah/hls_roku/saudi_sunnah-avc1_600000=2-mp4a_145600_ara=3.m3u8",
+      "source_urls": [
+        "https://cdn-globecast.akamaized.net/live/eds/saudi_sunnah/hls_roku/saudi_sunnah-avc1_600000=2-mp4a_145600_ara=3.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_413": {
+      "epg_id": "",
+      "id": "ch_m3u_413",
+      "logo_url": "https://static.wikia.nocookie.net/logopedia/images/1/1f/TV8.5_Logosu.png/revision/latest?cb=20170827103605",
+      "name": "TV 8bucuk",
+      "source_url": "https://rkhubpaomb.turknet.ercdn.net/fwjkgpasof/tv8bucuk/tv8bucuk_1080p.m3u8",
+      "source_urls": [
+        "https://rkhubpaomb.turknet.ercdn.net/fwjkgpasof/tv8bucuk/tv8bucuk_1080p.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_42": {
+      "epg_id": "",
+      "id": "ch_m3u_42",
+      "logo_url": "",
+      "name": "KANAL 23",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_kanal23/kanal23/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_kanal23/kanal23/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_43": {
+      "epg_id": "",
+      "id": "ch_m3u_43",
+      "logo_url": "",
+      "name": "KANAL 26",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_kanal26/kanal26/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_kanal26/kanal26/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_45": {
+      "epg_id": "",
+      "id": "ch_m3u_45",
+      "logo_url": "",
+      "name": "KANAL 34",
+      "source_url": "https://live.euromediacenter.com/kanal34/tracks-v1a1/mono.m3u8",
+      "source_urls": [
+        "https://live.euromediacenter.com/kanal34/tracks-v1a1/mono.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_46": {
+      "epg_id": "",
+      "id": "ch_m3u_46",
+      "logo_url": "",
+      "name": "KANAL 53",
+      "source_url": "https://kanal53.ozelip.com:3448/hybrid/play.m3u8",
+      "source_urls": [
+        "https://kanal53.ozelip.com:3448/hybrid/play.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_47": {
+      "epg_id": "",
+      "id": "ch_m3u_47",
+      "logo_url": "",
+      "name": "KANAL 58",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_kanal58/kanal58/chunks.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_kanal58/kanal58/chunks.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_49": {
+      "epg_id": "",
+      "id": "ch_m3u_49",
+      "logo_url": "",
+      "name": "KANAL ADA",
+      "source_url": "http://145.239.58.133:28008/kanalada/kanalada/sec-f5-v1-a1.m3u8?app=supersatforum",
+      "source_urls": [
+        "http://145.239.58.133:28008/kanalada/kanalada/sec-f5-v1-a1.m3u8?app=supersatforum"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_5": {
+      "epg_id": "ShowTV.tr",
+      "id": "ch_m3u_5",
+      "logo_url": "https://dsmart-static-v2.ercdn.net//resize-width/400/content/E/aM/11889/Thumbnail.png",
+      "name": "SHOW TV HD",
+      "source_url": "https://ciner.daioncdn.net/showtv/showtv.m3u8?ce=3\u0026app=4bc856ef-4c68-4a94-bc87-37dfaaa66558",
+      "source_urls": [
+        "https://ciner.daioncdn.net/showtv/showtv.m3u8?ce=3\u0026app=4bc856ef-4c68-4a94-bc87-37dfaaa66558"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_51": {
+      "epg_id": "",
+      "id": "ch_m3u_51",
+      "logo_url": "",
+      "name": "KANAL B",
+      "source_url": "https://baskentaudiovideo.xyz/ULUSALApp/streams/mUE22idl26lA1683879097431.m3u8",
+      "source_urls": [
+        "https://baskentaudiovideo.xyz/ULUSALApp/streams/mUE22idl26lA1683879097431.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_6": {
+      "epg_id": "KanalD.tr",
+      "id": "ch_m3u_6",
+      "logo_url": "",
+      "name": "KANAL D",
+      "source_url": "https://demiroren.daioncdn.net/kanald/kanald.m3u8?app=kanald_web\u0026ce=3",
+      "source_urls": [
+        "https://demiroren.daioncdn.net/kanald/kanald.m3u8?app=kanald_web\u0026ce=3",
+        "https://demiroren.daioncdn.net/kanald/kanald.m3u8?app=kanald_web",
+        "http://live.duhnet.tv/S2/HLS_LIVE/kanalddainp/track_4_1250/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_73": {
+      "epg_id": "",
+      "id": "ch_m3u_73",
+      "logo_url": "",
+      "name": "TV 41",
+      "source_url": "https://live.artidijitalmedya.com/artidijital_tv41/tv41/playlist.m3u8",
+      "source_urls": [
+        "https://live.artidijitalmedya.com/artidijital_tv41/tv41/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_8": {
+      "epg_id": "",
+      "id": "ch_m3u_8",
+      "logo_url": "https://cms-tabii-assets.tabii.com/thumbnails/23963_781e9dee-cbd8-491a-b166-0b1df25b3bd0_720.jpeg",
+      "name": "Tabii",
+      "source_url": "https://ceokzokgtd.erbvr.com/tabiitv/tabiitv.m3u8",
+      "source_urls": [
+        "https://ceokzokgtd.erbvr.com/tabiitv/tabiitv.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_83": {
+      "epg_id": "",
+      "id": "ch_m3u_83",
+      "logo_url": "",
+      "name": "RIZE TURK HD",
+      "source_url": "https://yayin.rizeturk.com:3777/hybrid/play.m3u8",
+      "source_urls": [
+        "https://yayin.rizeturk.com:3777/hybrid/play.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_85": {
+      "epg_id": "",
+      "id": "ch_m3u_85",
+      "logo_url": "",
+      "name": "ORDU BEL TV",
+      "source_url": "https://cdn1-ordubeltv.yayin.com.tr/ordubeltv/ordubeltv/playlist.m3u8",
+      "source_urls": [
+        "https://cdn1-ordubeltv.yayin.com.tr/ordubeltv/ordubeltv/playlist.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_86": {
+      "epg_id": "",
+      "id": "ch_m3u_86",
+      "logo_url": "",
+      "name": "FiNEST TV",
+      "source_url": "http://media.finest.tv/hls/live.m3u8",
+      "source_urls": [
+        "http://media.finest.tv/hls/live.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_87": {
+      "epg_id": "",
+      "id": "ch_m3u_87",
+      "logo_url": "",
+      "name": "DAMAR TV",
+      "source_url": "https://tvsms.club/tv.php?kanal=damar\u0026file=.m3u8",
+      "source_urls": [
+        "https://tvsms.club/tv.php?kanal=damar\u0026file=.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_88": {
+      "epg_id": "",
+      "id": "ch_m3u_88",
+      "logo_url": "",
+      "name": "ARABESK TV",
+      "source_url": "https://tvsms.club/tv.php?kanal=arabeskyeni\u0026file=.m3u8",
+      "source_urls": [
+        "https://tvsms.club/tv.php?kanal=arabeskyeni\u0026file=.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_89": {
+      "epg_id": "",
+      "id": "ch_m3u_89",
+      "logo_url": "",
+      "name": "SILA TV",
+      "source_url": "https://tvsms.club/tv.php?kanal=silatv\u0026file=.m3u8",
+      "source_urls": [
+        "https://tvsms.club/tv.php?kanal=silatv\u0026file=.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_90": {
+      "epg_id": "",
+      "id": "ch_m3u_90",
+      "logo_url": "",
+      "name": "ZEYNO TV",
+      "source_url": "https://tvsms.club/tv.php?kanal=zeynotv\u0026file=.m3u8",
+      "source_urls": [
+        "https://tvsms.club/tv.php?kanal=zeynotv\u0026file=.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_91": {
+      "epg_id": "",
+      "id": "ch_m3u_91",
+      "logo_url": "",
+      "name": "DOST TV",
+      "source_url": "https://tvsms.club/tvz.php?kanal=dost\u0026file=.m3u8",
+      "source_urls": [
+        "https://tvsms.club/tvz.php?kanal=dost\u0026file=.m3u8",
+        "https://dost.stream.emsal.im/tv/live.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_92": {
+      "epg_id": "",
+      "id": "ch_m3u_92",
+      "logo_url": "",
+      "name": "EZO TV",
+      "source_url": "https://tvsms.club/tvz.php?kanal=ezo\u0026file=.m3u8",
+      "source_urls": [
+        "https://tvsms.club/tvz.php?kanal=ezo\u0026file=.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_93": {
+      "epg_id": "",
+      "id": "ch_m3u_93",
+      "logo_url": "",
+      "name": "TOP POP TV",
+      "source_url": "https://tvsms.club/tvz.php?kanal=toppop\u0026file=.m3u8",
+      "source_urls": [
+        "https://tvsms.club/tvz.php?kanal=toppop\u0026file=.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_94": {
+      "epg_id": "",
+      "id": "ch_m3u_94",
+      "logo_url": "",
+      "name": "A VİVA TV",
+      "source_url": "https://tvsms.club/tv.php?kanal=vivatv\u0026file=.m3u8",
+      "source_urls": [
+        "https://tvsms.club/tv.php?kanal=vivatv\u0026file=.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_95": {
+      "epg_id": "",
+      "id": "ch_m3u_95",
+      "logo_url": "",
+      "name": "ARMA TV",
+      "source_url": "https://tvsms.club/tvz.php?kanal=arma\u0026file=.m3u8",
+      "source_urls": [
+        "https://tvsms.club/tvz.php?kanal=arma\u0026file=.m3u8"
+      ],
+      "tier": "free"
+    },
+    "ch_m3u_96": {
+      "epg_id": "",
+      "id": "ch_m3u_96",
+      "logo_url": "",
+      "name": "GENC SMS TV",
+      "source_url": "https://tvsms.club/tv.php?kanal=genctv\u0026file=.m3u8",
+      "source_urls": [
+        "https://tvsms.club/tv.php?kanal=genctv\u0026file=.m3u8"
+      ],
+      "tier": "free"
+    }
+  },
+  "epg_sources": {
+    "main_epg_1794652741886": "https://iptv-epg.org/files/epg-tr.xml"
+  },
+  "epg_mappings": {
+    "ch_m3u_108": "TV8.tr",
+    "ch_m3u_109": "KANAL7.tr",
+    "ch_m3u_112": "HABERTURK.tr",
+    "ch_m3u_117": "MinikaGO.tr",
+    "ch_m3u_134": "NTV.tr",
+    "ch_m3u_153": "MovieSmartTurk.tr",
+    "ch_m3u_158": "360.tr",
+    "ch_m3u_16": "HalkTV.tr",
+    "ch_m3u_164": "TGRTHaber.tr",
+    "ch_m3u_17": "TRTHaber.tr",
+    "ch_m3u_177": "TRT1.tr",
+    "ch_m3u_180": "TRT2.tr",
+    "ch_m3u_190": "FBTV.tr",
+    "ch_m3u_21": "StarTV.tr",
+    "ch_m3u_216": "TV8,5.tr",
+    "ch_m3u_22": "DiyanetTV.tr",
+    "ch_m3u_220": "UlkeTV.tr",
+    "ch_m3u_223": "TELE1.tr",
+    "ch_m3u_27": "TRTKurdi.tr",
+    "ch_m3u_28": "TRTArabi.tr",
+    "ch_m3u_29": "TRTWorld.tr",
+    "ch_m3u_3": "NOWTV.tr",
+    "ch_m3u_30": "TRTMüzik.tr",
+    "ch_m3u_31": "EuroD.de",
+    "ch_m3u_32": "TRTTURK.tr",
+    "ch_m3u_35": "BEYAZTV.tr",
+    "ch_m3u_36": "Teve2.tr",
+    "ch_m3u_38": "HABERGLOBAL.tr",
+    "ch_m3u_403": "tagesschau24.de",
+    "ch_m3u_404": "NDR.de",
+    "ch_m3u_5": "ShowTV.tr",
+    "ch_m3u_6": "KanalD.tr"
+  },
+  "m3u_sources": [
+    {
+      "id": "m3u_1794651107",
+      "url": "https://onureroz.com/indirmeler/turk/index.m3u",
+      "language": "Türkçe",
+      "content_type": "Canlı TV",
+      "auto_prune": true
+    }
+  ],
+  "deleted_channel_ids": {},
+  "users": {}
+}

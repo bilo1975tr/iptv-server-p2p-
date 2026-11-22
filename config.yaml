@@ -1,0 +1,31 @@
+server:
+  http_port: 8080
+  webrtc_listen_ip: "[::]" # Dual-stack IPv6 & IPv4
+  webrtc_min_port: 50000
+  webrtc_max_port: 50100
+  admin_user: "admin"
+  admin_pass: "admin123"
+  jwt_secret: "iptv-p2p-super-secret-jwt-key-2025"
+  aes_master_key: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+transcoder:
+  encoder_type: "hevc_nvenc" # Options: hevc_nvenc, hevc_qsv, libx265
+  fallback_encoder: "libx264" # For browsers lacking H.265 hardware support
+  gop_seconds: 1             # Strict 1-second Keyframe interval
+  preset: "llhq"             # Low-latency high quality
+  target_fps: 60
+
+channels: []
+
+acestream:
+  enabled: true
+  engine_path: "C:\\Users\\admin\\AppData\\Roaming\\acestream\\engine\\ace_engine.exe"
+  api_host: "127.0.0.1"
+  base_http_port: 6878
+  base_p2p_port: 8621
+  max_instances: 6
+  multi_port: false # Windows ace_engine.exe uses port 6878 with unique pid per concurrent stream; set true only for ace_console/Linux builds supporting --http-port
+  state_base_dir: "data/acestream_states"
+  startup_timeout_sec: 20
+  stream_mode: "ffmpeg_fmp4" # Options: ffmpeg_fmp4 (recommended for browser compatibility), hls_first
+

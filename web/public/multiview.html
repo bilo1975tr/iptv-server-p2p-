@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV Cinema P2P - Multiview Çoklu Ekran</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="/p2p-engine.js"></script>
+    <style>
+        :root {
+            --bg-dark: #070a12;
+            --panel-bg: #111827;
+            --card-border: rgba(255, 255, 255, 0.1);
+            --accent: #06b6d4;
+            --purple: #7c3aed;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body {
+            background: var(--bg-dark);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .topbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 18px;
+            background: rgba(17, 24, 39, 0.95);
+            border-bottom: 1px solid var(--card-border);
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 1rem;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn {
+            background: #1e293b;
+            color: var(--text);
+            border: 1px solid var(--card-border);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .btn:hover { border-color: var(--accent); }
+        .btn.active { background: var(--accent); color: #070a12; border-color: var(--accent); }
+        .btn-purple { background: rgba(124, 58, 237, 0.25); border-color: #8b5cf6; color: #ddd6fe; }
+        .grid-wrap {
+            flex: 1;
+            padding: 10px;
+            display: grid;
+            gap: 10px;
+            min-height: 0;
+        }
+        .grid-2 { grid-template-columns: repeat(2, 1fr); grid-template-rows: 1fr; }
+        .grid-4 { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); }
+        .grid-6 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); }
+        .grid-9 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
+
+        .tile {
+            background: #000;
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            min-height: 0;
+        }
+        .tile.unmuted { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.4); }
+        .tile-header {
+            background: rgba(17, 24, 39, 0.92);
+            padding: 6px 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .tile-pick-btn {
+            flex: 1;
+            min-width: 0;
+            background: #0f172a;
+            color: var(--text);
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            overflow: hidden;
+        }
+        .tile-pick-btn:hover { border-color: var(--accent); }
+        .tile-pick-label {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .tile-btn {
+            background: #1e293b;
+            color: var(--text);
+            border: 1px solid #334155;
+            border-radius: 5px;
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .tile-btn:hover { border-color: var(--accent); }
+        .tile-video-wrap {
+            flex: 1;
+            position: relative;
+            min-height: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .tile video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .tile-status {
+            position: absolute;
+            bottom: 8px;
+            left: 8px;
+            background: rgba(7, 10, 18, 0.8);
+            border: 1px solid rgba(255,255,255,0.12);
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-size: 0.72rem;
+            color: var(--muted);
+            pointer-events: none;
+        }
+        .tile-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(7, 10, 18, 0.78);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 16px;
+            gap: 6px;
+            font-size: 0.82rem;
+            color: var(--warning);
+            pointer-events: none;
+        }
+
+        /* Searchable Channel Picker Modal */
+        .picker-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(6px);
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .picker-box {
+            width: 540px;
+            max-width: 100%;
+            max-height: 82vh;
+            background: #111827;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+        }
+        .picker-top {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .picker-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+        .picker-search {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: var(--text);
+            font-size: 0.9rem;
+            outline: none;
+        }
+        .picker-search:focus { border-color: var(--accent); }
+        .picker-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .filter-chip {
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: var(--muted);
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .filter-chip.active {
+            background: var(--accent);
+            color: #070a12;
+            border-color: var(--accent);
+        }
+        .filter-chip.ace.active {
+            background: var(--purple);
+            color: white;
+            border-color: #8b5cf6;
+        }
+        .picker-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .picker-item {
+            padding: 9px 12px;
+            border-radius: 8px;
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid transparent;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            cursor: pointer;
+        }
+        .picker-item:hover {
+            border-color: var(--accent);
+            background: rgba(30, 41, 59, 0.9);
+        }
+        .picker-item-name { font-weight: 600; font-size: 0.88rem; }
+        .picker-item-sub { font-size: 0.72rem; color: var(--muted); }
+        .badge {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 5px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .badge-ace { background: rgba(124, 58, 237, 0.28); color: #ddd6fe; border: 1px solid #8b5cf6; }
+        .badge-free { background: rgba(16, 185, 129, 0.2); color: var(--success); border: 1px solid var(--success); }
+        .badge-paid { background: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid var(--danger); }
+
+        @media (max-width: 900px) {
+            body { overflow: auto; height: auto; }
+            .grid-2, .grid-4, .grid-6, .grid-9 {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto;
+            }
+            .tile { min-height: 240px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <div class="brand">
+            <span>🧩</span>
+            <span>IPTV P2P — Multiview (Çoklu AceStream &amp; Canlı Yayın)</span>
+        </div>
+        <div class="controls">
+            <button class="btn" id="btnLayout2" onclick="setLayout(2)">1x2 (2 Ekran)</button>
+            <button class="btn active" id="btnLayout4" onclick="setLayout(4)">2x2 (4 Ekran)</button>
+            <button class="btn" id="btnLayout6" onclick="setLayout(6)">2x3 (6 Ekran)</button>
+            <button class="btn" id="btnLayout9" onclick="setLayout(9)">3x3 (9 Ekran)</button>
+            <label style="display:flex; align-items:center; gap:5px; font-size:0.78rem; color:var(--muted); margin-left:6px; cursor:pointer;">
+                <input type="checkbox" id="singleAudioMode" checked> Tek Ses Modu
+            </label>
+            <a href="/player.html" class="btn">📺 Tekil Oynatıcı</a>
+            <a href="/admin/" class="btn btn-purple">⚙️ Admin Paneli</a>
+        </div>
+    </div>
+
+    <div id="gridWrap" class="grid-wrap grid-4"></div>
+
+    <!-- Searchable Channel Picker Modal -->
+    <div id="pickerModal" class="picker-modal" onclick="if(event.target===this) closePicker()">
+        <div class="picker-box">
+            <div class="picker-top">
+                <div class="picker-title-row">
+                    <span id="pickerHeading">🔍 Kanal Seçin (Ekran #1)</span>
+                    <button class="tile-btn" onclick="closePicker()">✕ Kapat</button>
+                </div>
+                <input type="text" id="pickerSearchInput" class="picker-search" placeholder="Kanal adı veya ID yazın (örn: trt, spor, ace)..." oninput="renderPickerList()">
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <select id="pickerSortSelect" onchange="renderPickerList()" style="padding:5px 9px; border-radius:6px; border:1px solid #334155; background:#0f172a; color:var(--text); font-size:0.78rem;">
+                        <option value="viewers_desc">🔥 İzleyici (Çoktan Aza)</option>
+                        <option value="viewers_asc">👁 İzleyici (Azdan Çoğa)</option>
+                        <option value="name_asc">🔤 İsim (A → Z)</option>
+                        <option value="name_desc">🔤 İsim (Z → A)</option>
+                        <option value="fav_first">⭐ Önce Favoriler</option>
+                    </select>
+                    <div class="picker-filters" style="flex:1;">
+                        <button class="filter-chip active" data-filter="all" onclick="setPickerFilter('all')">Tümü</button>
+                        <button class="filter-chip" id="mvFavChip" data-filter="favorites" onclick="setPickerFilter('favorites')">🔒 Favoriler</button>
+                        <button class="filter-chip ace" data-filter="acestream" onclick="setPickerFilter('acestream')">⚡ AceStream</button>
+                        <button class="filter-chip" data-filter="free" onclick="setPickerFilter('free')">FREE</button>
+                        <button class="filter-chip" data-filter="paid" onclick="setPickerFilter('paid')">PAID</button>
+                    </div>
+                </div>
+            </div>
+            <div id="pickerList" class="picker-list"></div>
+        </div>
+    </div>
+
+    <script>
+        let token = new URLSearchParams(window.location.search).get('token') || '';
+        const viewerTabId = 'mv_' + Math.random().toString(36).slice(2, 10);
+        let currentUser = null;
+        let userFavorites = new Set();
+        let channels = [];
+        let tileCount = 4;
+        const tiles = [];
+        let pickerTargetTile = null;
+        let pickerFilter = 'all';
+
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        class TilePlayer {
+            constructor(index) {
+                this.index = index;
+                this.channelId = '';
+                this.hls = null;
+                this.mseTimer = null;
+                this.ms = null;
+                this.blobUrl = null;
+                this.p2p = null;
+                this.el = this.buildDOM();
+            }
+
+            buildDOM() {
+                const div = document.createElement('div');
+                div.className = 'tile';
+                div.innerHTML = `
+                    <div class="tile-header">
+                        <button class="tile-pick-btn" title="Kanal Ara ve Seç">
+                            <span class="tile-pick-label">🔍 Kanal Seç (#${this.index + 1})</span>
+                            <span style="font-size:0.7rem; color:var(--accent);">▼</span>
+                        </button>
+                        <button class="tile-btn btn-mute" title="Sesi Aç/Kapat">🔇</button>
+                        <button class="tile-btn btn-reload" title="Yeniden Bağlan">↻</button>
+                        <button class="tile-btn btn-fs" title="Tam Ekran">⛶</button>
+                        <button class="tile-btn btn-stop" title="Yayını Kapat">✕</button>
+                    </div>
+                    <div class="tile-video-wrap">
+                        <video autoplay muted playsinline></video>
+                        <div class="tile-overlay"></div>
+                        <div class="tile-status">Hazır</div>
+                    </div>
+                `;
+                this.pickBtn = div.querySelector('.tile-pick-btn');
+                this.pickLabel = div.querySelector('.tile-pick-label');
+                this.videoEl = div.querySelector('video');
+                this.overlayEl = div.querySelector('.tile-overlay');
+                this.statusEl = div.querySelector('.tile-status');
+                this.muteBtn = div.querySelector('.btn-mute');
+
+                this.pickBtn.addEventListener('click', () => openPicker(this));
+                this.muteBtn.addEventListener('click', () => this.toggleMute());
+                div.querySelector('.btn-reload').addEventListener('click', () => {
+                    if (this.channelId) this.play(this.channelId);
+                });
+                div.querySelector('.btn-fs').addEventListener('click', () => {
+                    if (this.videoEl.requestFullscreen) this.videoEl.requestFullscreen();
+                });
+                div.querySelector('.btn-stop').addEventListener('click', () => {
+                    this.stop();
+                });
+                return div;
+            }
+
+            updatePickLabel() {
+                const ch = channels.find(c => c.id === this.channelId);
+                if (!ch) {
+                    this.pickLabel.innerText = `🔍 Kanal Seç (#${this.index + 1})`;
+                    return;
+                }
+                this.pickLabel.innerText = `${ch.is_acestream ? '⚡ ' : ''}${ch.name}`;
+            }
+
+            toggleMute() {
+                const nextMuted = !this.videoEl.muted;
+                if (!nextMuted && document.getElementById('singleAudioMode').checked) {
+                    tiles.forEach(t => {
+                        if (t !== this) t.setMuted(true);
+                    });
+                }
+                this.setMuted(nextMuted);
+            }
+
+            setMuted(muted) {
+                this.videoEl.muted = muted;
+                this.muteBtn.innerText = muted ? '🔇' : '🔊';
+                this.el.classList.toggle('unmuted', !muted);
+            }
+
+            setOverlay(msg) {
+                if (!msg) {
+                    this.overlayEl.style.display = 'none';
+                    this.overlayEl.innerText = '';
+                } else {
+                    this.overlayEl.style.display = 'flex';
+                    this.overlayEl.innerText = msg;
+                }
+            }
+
+            stop() {
+                this.channelId = '';
+                this.updatePickLabel();
+                if (this.p2p) {
+                    this.p2p.destroy();
+                    this.p2p = null;
+                }
+                if (this.hls) {
+                    this.hls.destroy();
+                    this.hls = null;
+                }
+                if (this.mseTimer) {
+                    clearInterval(this.mseTimer);
+                    this.mseTimer = null;
+                }
+                this.ms = null;
+                this.videoEl.onerror = null;
+                this.videoEl.removeAttribute('src');
+                this.videoEl.load();
+                if (this.blobUrl) {
+                    URL.revokeObjectURL(this.blobUrl);
+                    this.blobUrl = null;
+                }
+                this.setOverlay('');
+                this.statusEl.innerText = 'Hazır';
+            }
+
+            async play(chId) {
+                this.stop();
+                if (!chId) return;
+                this.channelId = chId;
+                this.updatePickLabel();
+                const ch = channels.find(c => c.id === chId);
+                const isAce = !!(ch && ch.is_acestream);
+                this.statusEl.innerText = isAce ? 'AceStream bağlanıyor...' : 'Bağlanıyor...';
+                if (isAce) {
+                    this.setOverlay('AceStream P2P akışı başlatılıyor...');
+                }
+
+                const tileViewerId = `${viewerTabId}_${this.index}`;
+                fetch('/api/channels/heartbeat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channel_id: chId, viewer_id: tileViewerId, action: 'join' })
+                }).catch(() => {});
+
+                if (typeof IPTVP2PEngine !== 'undefined') {
+                    this.p2p = new IPTVP2PEngine({
+                        channelId: chId,
+                        getToken: () => token,
+                        maxPeers: 4
+                    });
+                }
+
+                const proxyUrl = `/api/stream/${encodeURIComponent(chId)}/master.m3u8?token=${encodeURIComponent(token)}&vid=${encodeURIComponent(tileViewerId)}`;
+                try {
+                    const headCheck = await fetch(proxyUrl);
+                    if (headCheck.status === 403) {
+                        this.setOverlay('Yetkisiz (Paid kanal için token gerekli)');
+                        this.statusEl.innerText = '403 Yetkisiz';
+                        return;
+                    }
+                    const ct = (headCheck.headers.get('content-type') || '').toLowerCase();
+                    if (headCheck.ok && (ct.includes('mpegurl') || ct.includes('text'))) {
+                        if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+                            const hlsCfg = { lowLatencyMode: true };
+                            if (this.p2p && Hls.DefaultConfig && Hls.DefaultConfig.loader) {
+                                hlsCfg.fLoader = this.p2p.createHlsLoaderClass(Hls.DefaultConfig.loader);
+                            }
+                            this.hls = new Hls(hlsCfg);
+                            this.hls.loadSource(proxyUrl);
+                            this.hls.attachMedia(this.videoEl);
+                            this.hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                                this.setOverlay('');
+                                const peerCnt = this.p2p ? this.p2p.getOpenPeerCount() : 0;
+                                this.statusEl.innerText = isAce ? 'AceStream HLS' : (peerCnt > 0 ? `HLS+P2P (${peerCnt})` : 'HLS Aktif');
+                                this.videoEl.play().catch(() => {});
+                            });
+                            this.hls.on(Hls.Events.FRAG_LOADED, () => {
+                                if (this.p2p) {
+                                    const peerCnt = this.p2p.getOpenPeerCount();
+                                    if (peerCnt > 0) this.statusEl.innerText = `HLS+P2P (${peerCnt})`;
+                                }
+                            });
+                            this.hls.on(Hls.Events.ERROR, (evt, data) => {
+                                if (data && data.fatal) {
+                                    this.startMSE(chId, isAce);
+                                }
+                            });
+                            return;
+                        }
+                    }
+                } catch (_) {}
+
+                this.startMSE(chId, isAce);
+            }
+
+            startMSE(chId, isAce) {
+                if (typeof MediaSource === 'undefined') {
+                    this.setOverlay('Tarayıcı MediaSource desteklemiyor');
+                    return;
+                }
+                const ms = new MediaSource();
+                this.ms = ms;
+                this.blobUrl = URL.createObjectURL(ms);
+                this.videoEl.src = this.blobUrl;
+                this.statusEl.innerText = isAce ? 'AceStream → fMP4' : 'fMP4 Chunker';
+
+                this.videoEl.onerror = () => {
+                    if (this.channelId !== chId || this.ms !== ms) return;
+                    const err = this.videoEl.error;
+                    this.setOverlay(err ? `Video hatası (Kod ${err.code})` : 'Video oynatma hatası');
+                };
+
+                ms.addEventListener('sourceopen', () => {
+                    if (this.ms !== ms) return;
+                    let sb = null;
+                    let initLoaded = false;
+                    let seq = 0;
+                    let inFlight = false;
+                    const startTs = Date.now();
+
+                    const pickSB = (codec) => {
+                        const mimes = codec === 'HEVC'
+                            ? ['video/mp4; codecs="hvc1.1.6.L93.B0, mp4a.40.2"', 'video/mp4; codecs="hev1.1.6.L93.B0, mp4a.40.2"']
+                            : ['video/mp4; codecs="avc1.4d401f, mp4a.40.2"', 'video/mp4; codecs="avc1.64001f, mp4a.40.2"', 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"'];
+                        for (const m of mimes) {
+                            if (MediaSource.isTypeSupported(m)) {
+                                try { return ms.addSourceBuffer(m); } catch (_) {}
+                            }
+                        }
+                        return null;
+                    };
+
+                    const attachSB = (sourceBuf) => {
+                        sourceBuf.addEventListener('updateend', () => {
+                            if (this.channelId !== chId || this.ms !== ms) return;
+                            try {
+                                if (sourceBuf.buffered.length > 0) {
+                                    const bStart = sourceBuf.buffered.start(0);
+                                    const bEnd = sourceBuf.buffered.end(sourceBuf.buffered.length - 1);
+                                    if (this.videoEl.currentTime < bStart || (bEnd - this.videoEl.currentTime > 8)) {
+                                        this.videoEl.currentTime = Math.max(bStart, bEnd - 1.2);
+                                    }
+                                    if (this.videoEl.paused) {
+                                        this.videoEl.play().catch(() => {});
+                                    }
+                                }
+                            } catch (_) {}
+                        });
+                    };
+
+                    this.mseTimer = setInterval(async () => {
+                        if (inFlight || this.channelId !== chId || this.ms !== ms || ms.readyState !== 'open' || (sb && sb.updating)) return;
+                        inFlight = true;
+                        try {
+                            if (!initLoaded) {
+                                const elapsed = Math.floor((Date.now() - startTs) / 1000);
+                                const initRes = await fetch(`/live/${encodeURIComponent(chId)}/init.mp4?token=${encodeURIComponent(token)}&vid=${encodeURIComponent(viewerTabId + '_' + this.index)}`);
+                                if (initRes.status === 403) {
+                                    clearInterval(this.mseTimer);
+                                    this.setOverlay('Paid kanal — Ücretli abonelik gerekli');
+                                    return;
+                                }
+                                if (initRes.status === 202 || !initRes.ok) {
+                                    if (elapsed > 45) {
+                                        this.setOverlay('Zaman aşımı: Yayın başlatılamadı');
+                                    } else {
+                                        this.setOverlay(isAce ? `AceStream P2P hazırlanıyor (${elapsed}s)...` : `Yayın başlatılıyor (${elapsed}s)...`);
+                                    }
+                                    return;
+                                }
+                                const serverCodec = (initRes.headers.get('X-Chunk-Codec') || 'AVC').toUpperCase();
+                                const buf = await initRes.arrayBuffer();
+                                if (!sb) {
+                                    sb = pickSB(serverCodec);
+                                    if (!sb) {
+                                        if (serverCodec === 'HEVC' && elapsed < 12) return;
+                                        clearInterval(this.mseTimer);
+                                        this.setOverlay(`Desteklenmeyen codec (${serverCodec})`);
+                                        return;
+                                    }
+                                    attachSB(sb);
+                                }
+                                sb.appendBuffer(buf);
+                                initLoaded = true;
+                                this.setOverlay('');
+                                return;
+                            }
+
+                            if (sb.buffered.length > 0 && this.videoEl.currentTime - sb.buffered.start(0) > 25) {
+                                sb.remove(sb.buffered.start(0), this.videoEl.currentTime - 12);
+                                return;
+                            }
+
+                            if (seq > 0 && this.p2p && this.p2p.channelId === chId) {
+                                const p2pBuf = await this.p2p.tryFetchFromPeers(`fmp4:${chId}:${seq}`, '');
+                                if (p2pBuf && p2pBuf.byteLength > 0) {
+                                    if (!sb.updating && ms.readyState === 'open') {
+                                        sb.appendBuffer(p2pBuf);
+                                        this.statusEl.innerText = `P2P #${seq}`;
+                                        seq++;
+                                    }
+                                    return;
+                                }
+                            }
+
+                            const u = seq === 0
+                                ? `/live/${encodeURIComponent(chId)}/latest?token=${encodeURIComponent(token)}&vid=${encodeURIComponent(viewerTabId + '_' + this.index)}`
+                                : `/live/${encodeURIComponent(chId)}/chunk/${seq}?token=${encodeURIComponent(token)}&vid=${encodeURIComponent(viewerTabId + '_' + this.index)}`;
+                            const r = await fetch(u);
+                            if (r.status === 204) return;
+                            if (r.status === 404 || r.status === 410) {
+                                seq = 0;
+                                return;
+                            }
+                            if (r.ok) {
+                                const buf = await r.arrayBuffer();
+                                const hdrSeq = parseInt(r.headers.get('X-Chunk-Seq') || '0', 10);
+                                const hdrHash = r.headers.get('X-Chunk-Checksum') || '';
+                                if (this.p2p && this.p2p.channelId === chId && hdrSeq > 0) {
+                                    this.p2p.recordHttpDownload(`fmp4:${chId}:${hdrSeq}`, buf, hdrHash);
+                                }
+                                if (hdrSeq > 0) seq = hdrSeq + 1;
+                                else if (seq > 0) seq++;
+                                if (!sb.updating && ms.readyState === 'open') {
+                                    sb.appendBuffer(buf);
+                                    this.statusEl.innerText = `${isAce ? 'ACE fMP4' : 'fMP4'} #${hdrSeq || seq}`;
+                                }
+                            }
+                        } catch (err) {
+                            if (err && err.name === 'QuotaExceededError' && sb && sb.buffered.length > 0 && !sb.updating) {
+                                try { sb.remove(sb.buffered.start(0), Math.max(sb.buffered.start(0) + 5, this.videoEl.currentTime - 5)); } catch (_) {}
+                            }
+                        } finally {
+                            inFlight = false;
+                        }
+                    }, 400);
+                });
+            }
+        }
+
+        function openPicker(tile) {
+            pickerTargetTile = tile;
+            document.getElementById('pickerHeading').innerText = `🔍 Kanal Seçin (Ekran #${tile.index + 1})`;
+            document.getElementById('pickerModal').style.display = 'flex';
+            const input = document.getElementById('pickerSearchInput');
+            input.value = '';
+            renderPickerList();
+            setTimeout(() => input.focus(), 30);
+        }
+
+        function closePicker() {
+            document.getElementById('pickerModal').style.display = 'none';
+            pickerTargetTile = null;
+        }
+
+        function setPickerFilter(f) {
+            if (f === 'favorites' && (!currentUser || !currentUser.user_id)) {
+                const listEl = document.getElementById('pickerList');
+                listEl.innerHTML = '<div style="padding:24px; text-align:center; color:#fbbf24; font-size:0.86rem;">🔒 Favori listenize erişmek için önce Tekil Oynatıcı sayfasından giriş yapın veya ücretsiz/ücretli hesap açın.</div>';
+                return;
+            }
+            pickerFilter = f;
+            document.querySelectorAll('.filter-chip').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === f);
+            });
+            renderPickerList();
+        }
+
+        function getFilteredChannels() {
+            const q = document.getElementById('pickerSearchInput').value.trim().toLowerCase();
+            const sortBy = document.getElementById('pickerSortSelect').value;
+
+            const filtered = channels.filter(ch => {
+                if (pickerFilter === 'favorites' && !userFavorites.has(ch.id)) return false;
+                if (pickerFilter === 'acestream' && !ch.is_acestream) return false;
+                if (pickerFilter === 'free' && ch.tier === 'paid') return false;
+                if (pickerFilter === 'paid' && ch.tier !== 'paid') return false;
+                if (!q) return true;
+                return (ch.name && ch.name.toLowerCase().includes(q)) ||
+                       (ch.id && ch.id.toLowerCase().includes(q));
+            });
+
+            filtered.sort((a, b) => {
+                const va = a.viewer_count || 0;
+                const vb = b.viewer_count || 0;
+                switch (sortBy) {
+                    case 'viewers_desc':
+                        return vb !== va ? vb - va : a.name.localeCompare(b.name, 'tr');
+                    case 'viewers_asc':
+                        return va !== vb ? va - vb : a.name.localeCompare(b.name, 'tr');
+                    case 'name_desc':
+                        return b.name.localeCompare(a.name, 'tr');
+                    case 'fav_first': {
+                        const fa = userFavorites.has(a.id) ? 1 : 0;
+                        const fb = userFavorites.has(b.id) ? 1 : 0;
+                        if (fb !== fa) return fb - fa;
+                        return vb !== va ? vb - va : a.name.localeCompare(b.name, 'tr');
+                    }
+                    case 'name_asc':
+                    default:
+                        return a.name.localeCompare(b.name, 'tr');
+                }
+            });
+            return filtered;
+        }
+
+        function renderPickerList() {
+            const listEl = document.getElementById('pickerList');
+            const filtered = getFilteredChannels();
+            listEl.innerHTML = '';
+            if (filtered.length === 0) {
+                listEl.innerHTML = '<div style="padding:20px; text-align:center; color:var(--muted);">Eşleşen kanal bulunamadı.</div>';
+                return;
+            }
+            const isLoggedIn = !!(currentUser && currentUser.user_id);
+            filtered.slice(0, 150).forEach(ch => {
+                const isFav = isLoggedIn && userFavorites.has(ch.id);
+                const row = document.createElement('div');
+                row.className = 'picker-item';
+                row.innerHTML = `
+                    <div>
+                        <div class="picker-item-name">${isFav ? '⭐ ' : ''}${escapeHtml(ch.name)}</div>
+                        <div class="picker-item-sub">${escapeHtml(ch.id)}</div>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <span class="badge" style="background:rgba(56,189,248,0.14); color:#bae6fd; border:1px solid rgba(56,189,248,0.35);">👁 ${ch.viewer_count || 0}</span>
+                        ${ch.is_acestream ? '<span class="badge badge-ace">ACESTREAM</span>' : ''}
+                        <span class="badge ${ch.tier === 'paid' ? 'badge-paid' : 'badge-free'}">${ch.tier === 'paid' ? 'PAID' : 'FREE'}</span>
+                    </div>
+                `;
+                row.addEventListener('click', () => {
+                    if (pickerTargetTile) {
+                        pickerTargetTile.play(ch.id);
+                    }
+                    closePicker();
+                });
+                listEl.appendChild(row);
+            });
+        }
+
+        document.getElementById('pickerSearchInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closePicker();
+            } else if (e.key === 'Enter') {
+                const first = getFilteredChannels()[0];
+                if (first && pickerTargetTile) {
+                    pickerTargetTile.play(first.id);
+                    closePicker();
+                }
+            }
+        });
+
+        function setLayout(count) {
+            tileCount = count;
+            [2, 4, 6, 9].forEach(n => {
+                document.getElementById('btnLayout' + n).classList.toggle('active', n === count);
+            });
+            const grid = document.getElementById('gridWrap');
+            grid.className = 'grid-wrap grid-' + count;
+
+            while (tiles.length < count) {
+                const t = new TilePlayer(tiles.length);
+                tiles.push(t);
+                grid.appendChild(t.el);
+            }
+            while (tiles.length > count) {
+                const removed = tiles.pop();
+                removed.stop();
+                grid.removeChild(removed.el);
+            }
+        }
+
+        async function initMultiview() {
+            try {
+                const meRes = await fetch('/api/auth/me', { credentials: 'include' });
+                if (meRes.ok) {
+                    const me = await meRes.json();
+                    if (me.authenticated && me.user) {
+                        currentUser = me.user;
+                        if (me.token) token = me.token;
+                        userFavorites = new Set(Array.isArray(me.user.favorites) ? me.user.favorites : []);
+                        const favChip = document.getElementById('mvFavChip');
+                        favChip.innerText = `⭐ Favoriler (${userFavorites.size})`;
+                    }
+                }
+            } catch (_) {}
+
+            try {
+                const res = await fetch('/api/channels');
+                const data = await res.json();
+                channels = Array.isArray(data) ? data : [];
+            } catch (_) {
+                channels = [];
+            }
+            setLayout(4);
+
+            setInterval(async () => {
+                try {
+                    const r = await fetch('/api/channels/viewers');
+                    if (r.ok) {
+                        const m = await r.json();
+                        channels.forEach(c => { c.viewer_count = Number(m[c.id] || 0); });
+                    }
+                } catch (_) {}
+            }, 10000);
+        }
+
+        initMultiview();
+    </script>
+</body>
+</html>

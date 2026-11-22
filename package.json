@@ -1,0 +1,11 @@
+{
+  "name": "iptv-p2p-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "build": "node --check server.mjs",
+    "lint": "node --check server.mjs"
+  }
+}

@@ -1,0 +1,1753 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV P2P Server - Admin Yönetim ve İzleme Paneli</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #38bdf8;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+        .header-bar {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #334155;
+        }
+        h1, h2, h3 { color: var(--accent); margin-top: 0; }
+        h1 { margin-bottom: 0; font-size: 1.5rem; }
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+            border: 1px solid #334155;
+        }
+        .metric-value {
+            font-size: 1.75em;
+            font-weight: bold;
+            color: var(--success);
+            margin-top: 10px;
+        }
+        .metric-sub {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            text-align: left;
+            padding: 10px 12px;
+            border-bottom: 1px solid #334155;
+            vertical-align: middle;
+        }
+        th { background-color: #334155; font-size: 0.85rem; }
+        .badge-free { background-color: #0284c7; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+        .badge-paid { background-color: #e11d48; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+        .badge-live { background-color: #16a34a; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+        .badge-idle { background-color: #475569; color: #e2e8f0; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-size: 0.85rem; color: #cbd5e1; }
+        input, select, textarea, button {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background-color: #0f172a;
+            color: var(--text);
+            font-size: 0.9rem;
+        }
+        input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+        }
+        button {
+            background-color: var(--accent);
+            color: #0f172a;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            margin-top: 8px;
+        }
+        button:hover { opacity: 0.9; }
+        .btn-inline {
+            width: auto;
+            margin-top: 0;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+        .btn-secondary { background-color: #6366f1; color: white; }
+        .btn-success { background-color: #22c55e; color: white; }
+        .btn-warning { background-color: var(--warning); color: #0f172a; }
+        .btn-danger { background-color: var(--danger); color: white; }
+        .result-box {
+            margin-top: 10px;
+            padding: 10px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            display: none;
+            font-size: 0.85rem;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.75);
+            backdrop-filter: blur(5px);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: var(--card-bg);
+            padding: 28px;
+            border-radius: 12px;
+            width: 550px;
+            max-width: 92%;
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 1px solid #475569;
+        }
+        .actions-cell {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+        }
+        .table-scroll {
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-bar">
+        <h1>🚀 IPTV P2P Server - Admin Yönetim ve İzleme Paneli</h1>
+        <div class="header-actions">
+            <a href="/player.html" target="_blank" style="color: var(--accent); text-decoration: none; font-weight: bold; font-size: 0.9rem;">📺 Oynatıcıyı Aç</a>
+            <a href="/multiview.html" target="_blank" style="color: #a78bfa; text-decoration: none; font-weight: bold; font-size: 0.9rem;">🧩 Multiview</a>
+            <button class="btn-inline btn-success" onclick="openAddModal()">+ Yeni Kanal Ekle</button>
+            <button class="btn-inline btn-danger" onclick="logoutAdmin()">Çıkış Yap</button>
+        </div>
+    </div>
+
+    <!-- System & Hardware Telemetry Metrics -->
+    <h2>📊 Canlı Sunucu ve Yayın Metrikleri</h2>
+    <div class="grid">
+        <div class="card">
+            <div>GPU (NVENC / QSV)</div>
+            <div class="metric-value" id="gpuLoad">--</div>
+            <div class="metric-sub" id="gpuSub">Kontrol ediliyor...</div>
+        </div>
+        <div class="card">
+            <div>İşlemci (CPU) Yükü</div>
+            <div class="metric-value" id="cpuLoad">-- %</div>
+            <div class="metric-sub" id="uptimeSub">Çalışma süresi: --</div>
+        </div>
+        <div class="card">
+            <div>RAM Kullanımı</div>
+            <div class="metric-value" id="ramLoad">-- MB</div>
+            <div class="metric-sub" id="activeStreamsSub">Aktif FFmpeg Akışı: 0</div>
+        </div>
+        <div class="card">
+            <div>Aktif P2P Swarm İstemcileri</div>
+            <div class="metric-value" id="peerCount">-- Peer</div>
+            <div class="metric-sub" id="ipv6Sub">IPv6: -- | IPv4: --</div>
+        </div>
+    </div>
+
+    <!-- AceStream Engine & Search Section -->
+    <h2>⚡ AceStream Motoru, Çoklu Port Havuzu &amp; Kanal Arama</h2>
+    <div class="grid">
+        <div class="card">
+            <h3>🖥️ AceStream Engine Durumu &amp; Port Havuzu</h3>
+            <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:12px;">
+                <span id="aceStatusBadge" class="badge-idle">Kontrol ediliyor...</span>
+                <span id="aceVersionInfo" style="font-size:0.82rem; color:var(--muted);">--</span>
+            </div>
+            <div style="font-size:0.78rem; color:var(--muted); margin-bottom:10px; word-break:break-all;">
+                Motor Yolu: <code id="aceEnginePath">--</code>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+                <button class="btn-inline btn-success" onclick="startAceEngine()">▶ Motoru Başlat</button>
+                <button class="btn-inline btn-danger" onclick="stopAceEngine()">⏹ Tüm AceStream Oturumlarını Durdur</button>
+            </div>
+            <div style="max-height:175px; overflow-y:auto;">
+                <table style="font-size:0.78rem;">
+                    <thead>
+                        <tr>
+                            <th>Slot / Port</th>
+                            <th>Durum</th>
+                            <th>Kanal / Peer</th>
+                        </tr>
+                    </thead>
+                    <tbody id="aceSlotsBody">
+                        <tr><td colspan="3">Yükleniyor...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>🔍 AceStream Kanal Ara &amp; Ekle</h3>
+            <form id="aceSearchForm">
+                <div class="form-group" style="margin-bottom:10px;">
+                    <label for="aceSearchQuery">Kanal Adı veya Doğrudan AceStream ID / Link (acestream://...)</label>
+                    <input type="text" id="aceSearchQuery" placeholder="Örn: sport, arena, acestream://... veya 40 haneli ID" required>
+                </div>
+                <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label for="aceSearchCategory">Kategori</label>
+                        <select id="aceSearchCategory">
+                            <option value="all">Tümü</option>
+                            <option value="tv">TV</option>
+                            <option value="sport">Spor</option>
+                            <option value="movies">Filmler</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label for="aceAddTier">Eklenecek Paket</label>
+                        <select id="aceAddTier">
+                            <option value="free">Free (Ücretsiz)</option>
+                            <option value="paid">Paid (Şifreli)</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn-secondary">🔍 ace_engine.exe Üzerinden Ara</button>
+            </form>
+            <div id="aceSearchFeedback" class="result-box"></div>
+            <div style="max-height: 230px; overflow-y: auto; margin-top: 10px;">
+                <table style="font-size: 0.8rem;">
+                    <thead>
+                        <tr>
+                            <th>Kanal</th>
+                            <th>Kaynak / Durum</th>
+                            <th>İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="aceSearchResultsBody">
+                        <tr><td colspan="3" style="color:var(--muted);">Arama yapmak için sorgu girin.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- M3U, EPG, Users -->
+    <h2>📂 M3U, EPG ve Kullanıcı Yönetimi</h2>
+    <div class="grid">
+        <div class="card">
+            <h3>M3U URL Adresi veya Metin İçe Aktar</h3>
+            <form id="m3uForm">
+                <div class="form-group">
+                    <label for="m3uContent">M3U İndirme Linki veya Metin İçeriği</label>
+                    <textarea id="m3uContent" rows="3" placeholder="http://provider.com/get.php?type=m3u" required></textarea>
+                </div>
+                <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label for="m3uLanguage">M3U Dili / Ülkesi</label>
+                        <select id="m3uLanguage">
+                            <option value="Türkçe">Türkçe</option>
+                            <option value="Almanca">Almanca</option>
+                            <option value="İngilizce">İngilizce</option>
+                            <option value="Karışık">Karışık / Global</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label for="m3uContentType">İçerik Türü</label>
+                        <select id="m3uContentType">
+                            <option value="Canlı TV">Canlı TV</option>
+                            <option value="Filmler">Filmler</option>
+                            <option value="Diziler">Diziler</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label for="m3uTier">Kanal Paketi</label>
+                        <select id="m3uTier">
+                            <option value="free">Free (Ücretsiz)</option>
+                            <option value="paid">Paid (Şifreli)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label for="autoPrune">Ölü Kanalları Sil?</label>
+                        <select id="autoPrune">
+                            <option value="true">Evet (Temizle)</option>
+                            <option value="false">Hayır</option>
+                        </select>
+                    </div>
+                </div>
+                <label style="display:flex; align-items:center; font-size:0.8rem; margin-bottom:10px; cursor:pointer;">
+                    <input type="checkbox" id="m3uInsecureTls">
+                    <span>Kendinden imzalı SSL sertifikalarına izin ver (Insecure TLS)</span>
+                </label>
+                <button type="submit">M3U İçe Aktar ve Kaydet</button>
+            </form>
+            <div id="m3uResult" class="result-box"></div>
+        </div>
+
+        <!-- M3U & EPG Sources Manager Card -->
+        <div class="card">
+            <h3>🔗 Kayıtlı M3U Listeleri</h3>
+            <div style="max-height: 150px; overflow-y: auto;">
+                <table style="font-size: 0.82rem;">
+                    <thead>
+                        <tr>
+                            <th>Dil / Tür</th>
+                            <th>URL / İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="m3uSourcesTableBody">
+                        <tr><td colspan="2">Yükleniyor...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 style="margin-top: 18px;">📅 EPG Yönetimi ve Kaynakları</h3>
+            <form id="epgForm">
+                <div class="form-group">
+                    <label for="epgUrl">XMLTV EPG URL (.xml / .gz)</label>
+                    <input type="text" id="epgUrl" placeholder="https://.../epg.xml.gz" required>
+                </div>
+                <div class="form-group">
+                    <label for="epgOffset">Saat Kaydırma (Time Offset)</label>
+                    <select id="epgOffset">
+                        <option value="999" selected>Auto (XMLTV zaman dilimini otomatik oku)</option>
+                        <option value="3">+3 Saat (Türkiye)</option>
+                        <option value="2">+2 Saat</option>
+                        <option value="1">+1 Saat</option>
+                        <option value="0">0 Saat</option>
+                        <option value="-1">-1 Saat</option>
+                    </select>
+                </div>
+                <button type="submit">EPG Kaynağını Ekle</button>
+            </form>
+            <button class="btn-secondary" onclick="autoMapEPG()">🤖 Akıllı EPG Otomatik Eşleştir</button>
+            <div style="max-height: 130px; overflow-y: auto; margin-top: 10px;">
+                <table style="font-size: 0.78rem;">
+                    <tbody id="epgSourcesTableBody">
+                        <tr><td>Kayıtlı EPG yok.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="form-group" style="margin-top: 12px; margin-bottom: 0;">
+                <label>İstemcilere Sunulacak Temiz EPG URL:</label>
+                <input type="text" id="clientEpgUrl" readonly onclick="this.select();" style="font-size: 0.8rem; background: #0b0f19; color: #38bdf8; cursor: pointer;" title="Kopyalamak için tıklayın">
+            </div>
+            <div id="epgResult" class="result-box"></div>
+        </div>
+
+        <!-- User Accounts & Subscription Manager Card -->
+        <div class="card">
+            <h3>👥 Kullanıcı & Abonelik Yönetimi</h3>
+            <form id="userForm">
+                <div class="form-group">
+                    <label for="newUserId">Kullanıcı Adı / ID</label>
+                    <input type="text" id="newUserId" required placeholder="musteri_01">
+                </div>
+                <div class="form-group">
+                    <label for="newUserTier">Abonelik Tipi</label>
+                    <select id="newUserTier">
+                        <option value="paid">Paid (Ücretli Abone)</option>
+                        <option value="free">Free (Ücretsiz Kullanıcı)</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-success">Kullanıcı Ekle & Token Üret</button>
+            </form>
+            <div style="max-height: 220px; overflow-y: auto; margin-top: 15px;">
+                <table style="font-size: 0.8rem;">
+                    <thead>
+                        <tr>
+                            <th>Kullanıcı</th>
+                            <th>Statü</th>
+                            <th>İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr><td colspan="3">Kullanıcı yok.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backup & Restore Section -->
+    <h2>💾 Sunucu Yedekleme (Backup / Export & Import)</h2>
+    <div class="card" style="display:flex; flex-wrap:wrap; gap:15px; align-items:center; margin-bottom:30px;">
+        <button class="btn-inline btn-success" onclick="exportBackup()">📥 Tüm Kanalları Yedekle (JSON)</button>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importBackup(this)">
+        <button class="btn-inline btn-secondary" onclick="document.getElementById('importFile').click()">📤 Yedekten Geri Yükle (Import)</button>
+    </div>
+
+    <!-- USDT Billing & Subscription Settings -->
+    <h2>💳 USDT Ödeme, Cüzdan ve Paket Ücretleri</h2>
+    <div class="grid" style="margin-bottom:30px;">
+        <div class="card">
+            <h3>Alıcı Cüzdan & Paket Fiyatları</h3>
+            <form id="billingSettingsForm">
+                <div class="form-group">
+                    <label for="billingUsdtNetwork">Blockchain Ağı</label>
+                    <select id="billingUsdtNetwork">
+                        <option value="TRC20">TRC20 (TRON USDT - Düşük Komisyon)</option>
+                        <option value="BEP20">BEP20 (BNB Smart Chain USDT)</option>
+                        <option value="POLYGON">POLYGON (MATIC USDT)</option>
+                        <option value="ERC20">ERC20 (Ethereum USDT)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="billingUsdtAddress">USDT Alıcı Cüzdan Adresiniz</label>
+                    <input type="text" id="billingUsdtAddress" placeholder="TRC20 için T... veya EVM için 0x...">
+                </div>
+                <div class="grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label for="billingMonthly">Aylık (USDT)</label>
+                        <input type="number" step="0.01" min="0" id="billingMonthly" value="10">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label for="billingQuarterly">3 Aylık (USDT)</label>
+                        <input type="number" step="0.01" min="0" id="billingQuarterly" value="25">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label for="billingYearly">Yıllık (USDT)</label>
+                        <input type="number" step="0.01" min="0" id="billingYearly" value="80">
+                    </div>
+                </div>
+                <label style="display:flex; align-items:center; font-size:0.82rem; margin-bottom:12px; cursor:pointer;">
+                    <input type="checkbox" id="billingAutoVerify" checked>
+                    <span>Otomatik On-Chain USDT Doğrulama Aktif (Para gelince hesabı otomatik aç)</span>
+                </label>
+                <button type="submit" class="btn-success">💾 Cüzdan & Ücret Ayarlarını Kaydet</button>
+            </form>
+            <div id="billingFeedback" class="result-box"></div>
+        </div>
+
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h3 style="margin:0;">🧾 USDT Ödeme Siparişleri</h3>
+                <button class="btn-inline btn-secondary" onclick="fetchBillingOrders()" style="padding:5px 10px; font-size:0.75rem;">↻ Yenile</button>
+            </div>
+            <div style="max-height: 290px; overflow-y: auto;">
+                <table style="font-size: 0.78rem;">
+                    <thead>
+                        <tr>
+                            <th>Kullanıcı / Paket</th>
+                            <th>Beklenen Tutar</th>
+                            <th>Durum / TX</th>
+                            <th>İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="billingOrdersBody">
+                        <tr><td colspan="4" style="color:var(--muted);">Henüz sipariş yok.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stream Management -->
+    <h2>📺 Aktif Yayın Listesi ve Kanal Düzenleyici <span id="channelCountBadge" style="font-size: 0.85rem; background: var(--accent); color: #0f172a; padding: 3px 10px; border-radius: 6px; margin-left: 10px;">Toplam: 0 Kanal</span></h2>
+    <div class="card">
+        <div style="display:flex; flex-wrap:wrap; gap: 10px; align-items: center; margin-bottom: 12px;">
+            <input type="text" id="tableSearch" aria-label="Kanallarda Ara" placeholder="🔍 Kanallarda ara (İsim, ID veya EPG)..." oninput="renderTable()" style="max-width: 320px;">
+            <button class="btn-inline btn-secondary" onclick="filterUnmapped()">⚠️ EPG Atanmamışları Göster</button>
+            <button class="btn-inline" onclick="filterDuplicates()" style="background:#b45309; color:white;">🔁 Mükerrer URL Göster</button>
+            <button class="btn-inline" onclick="clearSearch()" style="background:#334155; color:white;">Tümünü Göster</button>
+            <button class="btn-inline" id="mergeSelectedBtn" onclick="openMergeModal()" disabled style="background:#7c3aed; color:white; opacity:0.55; margin-left:auto;">🔗 Seçilenleri Birleştir (0)</button>
+            <button class="btn-inline" onclick="dedupeByURL()" style="background:#0f766e; color:white;">🧹 Mükerrer URL'leri Temizle</button>
+        </div>
+        <div id="streamActionResult" class="result-box" style="margin-bottom: 12px;"></div>
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:36px;"><input type="checkbox" id="selectAllStreams" aria-label="Tümünü Seç" onchange="toggleSelectAllVisible(this.checked)"></th>
+                        <th>ID</th>
+                        <th>Kanal Adı</th>
+                        <th>Paket</th>
+                        <th>Yayın Durumu</th>
+                        <th>Kaynak URL / Alternatifler</th>
+                        <th>EPG ID</th>
+                        <th>İşlem</th>
+                    </tr>
+                </thead>
+                <tbody id="streamTableBody">
+                    <tr>
+                        <td colspan="8">Yükleniyor...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Add Channel Modal -->
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <h2>+ Yeni Kanal Ekle</h2>
+            <form id="addForm">
+                <div class="form-group">
+                    <label for="addName">Kanal Adı</label>
+                    <input type="text" id="addName" required placeholder="Örn: TRT 1 HD">
+                </div>
+                <div class="form-group">
+                    <label for="addTier">Paket Tipi</label>
+                    <select id="addTier">
+                        <option value="free">Free (Ücretsiz)</option>
+                        <option value="paid">Paid (Şifreli)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="addSourceUrl">Ana Kaynak URL (.m3u8 / http / rtsp / acestream://)</label>
+                    <input type="text" id="addSourceUrl" required placeholder="https://.../master.m3u8 veya acestream://...">
+                </div>
+                <div class="form-group">
+                    <label for="addSourceUrls">Alternatif Kaynak URL'leri (Her satıra bir URL, opsiyonel)</label>
+                    <textarea id="addSourceUrls" rows="2" placeholder="https://yedek1.m3u8"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="addLogoUrl">Logo URL (Opsiyonel)</label>
+                    <input type="text" id="addLogoUrl" placeholder="https://.../logo.png">
+                </div>
+                <div class="form-group">
+                    <label for="addEpgId">EPG ID (Opsiyonel)</label>
+                    <input type="text" id="addEpgId" list="epgChannelsList" placeholder="Örn: TRT1.tr" onfocus="renderEpgDatalist(this.value)" oninput="renderEpgDatalist(this.value)">
+                </div>
+                <div id="addErrorBox" style="color: var(--danger); font-size: 0.85rem; margin-bottom: 10px; display: none;"></div>
+                <button type="submit" class="btn-success">Kanalı Ekle</button>
+                <button type="button" onclick="closeAddModal()" style="background-color: #475569; color:white;">İptal</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Channel Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <h2>Kanal Düzenle</h2>
+            <form id="editForm">
+                <input type="hidden" id="editId">
+                <div class="form-group">
+                    <label for="editName">Kanal Adı</label>
+                    <input type="text" id="editName" required>
+                </div>
+                <div class="form-group">
+                    <label for="editTier">Paket Tipi</label>
+                    <select id="editTier">
+                        <option value="free">Free</option>
+                        <option value="paid">Paid</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editSourceUrl">Ana Kaynak URL</label>
+                    <input type="text" id="editSourceUrl" required>
+                </div>
+                <div class="form-group">
+                    <label for="editSourceUrls">Alternatif Kaynak URL'leri (Her satıra bir URL)</label>
+                    <textarea id="editSourceUrls" rows="3" placeholder="http://..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="editLogoUrl">Alternatif Logo URL</label>
+                    <input type="text" id="editLogoUrl" placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label for="editEpgId">EPG Kanal Arama ve Seçici (Tüm Kaynaklar)</label>
+                    <input type="text" id="editEpgId" list="epgChannelsList" placeholder="🔍 TRT yazın veya EPG ID seçin" onfocus="renderEpgDatalist(this.value)" oninput="renderEpgDatalist(this.value)">
+                    <datalist id="epgChannelsList"></datalist>
+                </div>
+                <div id="editErrorBox" style="color: var(--danger); font-size: 0.85rem; margin-bottom: 10px; display: none;"></div>
+                <button type="submit">Değişiklikleri Kaydet</button>
+                <button type="button" onclick="closeModal()" style="background-color: #475569; color:white;">İptal</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Merge Channels Modal -->
+    <div id="mergeModal" class="modal">
+        <div class="modal-content" style="width: 600px;">
+            <h2>🔗 Kanalları & Kaynakları Birleştir</h2>
+            <p style="font-size:0.85rem; color: var(--muted); margin-bottom: 14px;">
+                Seçilen kanalların tüm yayın adresleri tek kanalda alternatif kaynak (failover) olarak toplanır. Logo, EPG ID ve kullanıcı favorileri korunan ana kanala aktarılır.
+            </p>
+            <div class="form-group">
+                <label for="mergeTargetSelect">Korunacak Ana Kanal (ID / İsim / EPG korunur)</label>
+                <select id="mergeTargetSelect" onchange="updateMergePreview()"></select>
+            </div>
+            <div class="form-group">
+                <label for="mergeNewName">Kanal Adı (İsteğe bağlı güncelleyin)</label>
+                <input type="text" id="mergeNewName" placeholder="Örn: 360 TV">
+            </div>
+            <div class="form-group">
+                <label>Birleştirilecek Tüm Kaynak URL'ler</label>
+                <div id="mergeUrlsPreview" style="background:#0f172a; border:1px solid var(--border); border-radius:8px; padding:10px; font-size:0.78rem; max-height:160px; overflow-y:auto; color:#cbd5e1;"></div>
+            </div>
+            <div id="mergeErrorBox" style="color: var(--danger); font-size: 0.85rem; margin-bottom: 10px; display: none;"></div>
+            <div style="display:flex; gap:10px;">
+                <button type="button" onclick="confirmMergeChannels()" style="background:#7c3aed; color:white;">Birleştir ve Kaynakları Topla</button>
+                <button type="button" onclick="closeMergeModal()" style="background-color: #475569; color:white;">İptal</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content" style="width: 400px;">
+            <h2>🔐 Admin Girişi</h2>
+            <p style="font-size:0.85rem; color: var(--muted); margin-bottom: 15px;">
+                Yönetim paneline erişmek için <code>config.yaml</code> içindeki admin bilgilerini girin.<br>
+                <small>Varsayılan: <code>admin</code> / <code>admin123</code></small>
+            </p>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginUser">Kullanıcı Adı</label>
+                    <input type="text" id="loginUser" required value="admin" placeholder="admin" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="loginPass">Şifre</label>
+                    <input type="password" id="loginPass" required placeholder="admin123" autocomplete="current-password">
+                </div>
+                <div id="loginError" style="color: var(--danger); font-size: 0.85rem; margin-bottom: 10px; display: none;"></div>
+                <button type="submit">Giriş Yap</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let allStreams = {};
+        let allEpgChannels = [];
+        let selectedStreamIDs = new Set();
+        let duplicateFilterActive = false;
+        let adminToken = localStorage.getItem('iptv_admin_token') || '';
+        let pollingStarted = false;
+
+        document.getElementById('clientEpgUrl').value = window.location.origin + '/api/epg/client.xml';
+
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function showLoginModal(msg) {
+            const errBox = document.getElementById('loginError');
+            if (msg) {
+                errBox.innerText = msg;
+                errBox.style.display = 'block';
+            } else {
+                errBox.style.display = 'none';
+            }
+            document.getElementById('loginModal').style.display = 'flex';
+        }
+
+        function hideLoginModal() {
+            document.getElementById('loginModal').style.display = 'none';
+        }
+
+        function logoutAdmin() {
+            adminToken = '';
+            localStorage.removeItem('iptv_admin_token');
+            showLoginModal('Oturum sonlandırıldı.');
+        }
+
+        async function adminFetch(url, options = {}) {
+            const headers = Object.assign({}, options.headers || {});
+            if (adminToken) {
+                headers['Authorization'] = 'Bearer ' + adminToken;
+            }
+            const res = await fetch(url, Object.assign({}, options, { headers }));
+            if (res.status === 401) {
+                adminToken = '';
+                localStorage.removeItem('iptv_admin_token');
+                showLoginModal('Oturum süresi doldu veya yetkisiz erişim. Lütfen giriş yapın.');
+                throw new Error('Unauthorized');
+            }
+            return res;
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('loginUser').value.trim();
+            const password = document.getElementById('loginPass').value;
+            try {
+                const res = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showLoginModal(data.error || 'Giriş başarısız.');
+                    return;
+                }
+                adminToken = data.token;
+                localStorage.setItem('iptv_admin_token', adminToken);
+                hideLoginModal();
+                initDashboard();
+            } catch (err) {
+                showLoginModal('Sunucuya bağlanılamadı.');
+            }
+        });
+
+        async function fetchMetrics() {
+            if (!adminToken) return;
+            try {
+                const res = await adminFetch('/api/admin/metrics');
+                const data = await res.json();
+                if (data.gpu_available) {
+                    document.getElementById('gpuLoad').innerText = data.gpu_encoder_pct + ' %';
+                    document.getElementById('gpuSub').innerText = `VRAM: ${data.gpu_memory_used_mb} MB | Sıcaklık: ${data.gpu_temp_c}°C`;
+                } else {
+                    document.getElementById('gpuLoad').innerText = 'CPU Modu';
+                    document.getElementById('gpuSub').innerText = 'Donanımsal NVENC GPU bulunamadı';
+                }
+                document.getElementById('cpuLoad').innerText = data.cpu_usage_pct.toFixed(1) + ' %';
+                document.getElementById('uptimeSub').innerText = `Çalışma süresi: ${data.uptime_seconds} sn | Goroutine: ${data.goroutines_count}`;
+                document.getElementById('ramLoad').innerText = data.ram_used_mb + ' / ' + data.ram_total_mb + ' MB';
+                document.getElementById('activeStreamsSub').innerText = `Aktif FFmpeg Akışı: ${data.active_streams || 0}`;
+            } catch (e) {}
+        }
+
+        async function fetchSwarms() {
+            if (!adminToken) return;
+            try {
+                const res = await adminFetch('/api/admin/swarms');
+                const data = await res.json();
+                let totalPeers = 0;
+                let ipv6Peers = 0;
+                let p2pKB = 0;
+                let httpKB = 0;
+                for (let ch in data) {
+                    totalPeers += data[ch].total_peers || 0;
+                    ipv6Peers += data[ch].ipv6_peers || 0;
+                    p2pKB += data[ch].p2p_kb_in || 0;
+                    httpKB += data[ch].http_kb_in || 0;
+                }
+                const totalKB = p2pKB + httpKB;
+                const offloadPct = totalKB > 0 ? Math.round((p2pKB / totalKB) * 100) : 0;
+                const p2pMB = (p2pKB / 1024).toFixed(1);
+                document.getElementById('peerCount').innerText = `${totalPeers} Peer`;
+                document.getElementById('ipv6Sub').innerText = `IPv6: ${ipv6Peers} | IPv4: ${totalPeers - ipv6Peers} | P2P Tasarruf: %${offloadPct} (${p2pMB} MB)`;
+            } catch (e) {}
+        }
+
+        async function fetchStreams() {
+            if (!adminToken) return;
+            try {
+                const res = await adminFetch('/api/admin/streams');
+                allStreams = await res.json();
+                renderTable();
+            } catch (e) {}
+        }
+
+        async function fetchM3USources() {
+            if (!adminToken) return;
+            try {
+                const res = await adminFetch('/api/admin/m3u/sources');
+                const sources = await res.json();
+                const tbody = document.getElementById('m3uSourcesTableBody');
+                tbody.innerHTML = '';
+                if (!sources || sources.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="2">Kayıtlı M3U listesi yok.</td></tr>`;
+                    return;
+                }
+                sources.forEach(src => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><b>[${escapeHtml(src.language)}]</b> ${escapeHtml(src.content_type)}</td>
+                        <td>
+                            <code style="word-break:break-all; font-size:0.75rem;">${escapeHtml(src.url)}</code><br>
+                            <button class="btn-danger btn-inline" onclick="deleteM3USource('${escapeHtml(src.id)}')" style="padding:3px 8px; font-size:0.72rem; margin-top:4px;">Sil</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {}
+        }
+
+        async function deleteM3USource(id) {
+            if (!confirm('Bu M3U kaynağını silmek istiyor musunuz?')) return;
+            await adminFetch(`/api/admin/m3u/sources?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+            fetchM3USources();
+        }
+
+        async function fetchEPGSources() {
+            if (!adminToken) return;
+            try {
+                const res = await adminFetch('/api/admin/epg/sources');
+                const sources = await res.json();
+                const tbody = document.getElementById('epgSourcesTableBody');
+                tbody.innerHTML = '';
+                if (!sources || sources.length === 0) {
+                    tbody.innerHTML = `<tr><td>Kayıtlı EPG kaynağı yok.</td></tr>`;
+                    return;
+                }
+                sources.forEach(src => {
+                    const offsetText = src.time_offset === 999 ? 'Auto' : (src.time_offset > 0 ? `+${src.time_offset} Saat` : `${src.time_offset} Saat`);
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>
+                            <code style="word-break:break-all; font-size:0.75rem;">${escapeHtml(src.url)}</code><br>
+                            <small style="color:var(--accent);">Kanal: ${src.channel_count} | Eşleşen: ${src.mapped_count} | Offset: ${escapeHtml(offsetText)}</small><br>
+                            <button class="btn-danger btn-inline" onclick="deleteEPGSource('${escapeHtml(src.id)}')" style="padding:3px 8px; font-size:0.7rem; margin-top:4px;">Sil</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {}
+        }
+
+        async function deleteEPGSource(id) {
+            if (!confirm('Bu EPG kaynağını silmek istiyor musunuz?')) return;
+            await adminFetch(`/api/admin/epg/sources?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+            fetchEPGSources();
+            fetchEpgChannels();
+        }
+
+        async function fetchUsers() {
+            if (!adminToken) return;
+            try {
+                const res = await adminFetch('/api/admin/users');
+                const users = await res.json();
+                const tbody = document.getElementById('usersTableBody');
+                tbody.innerHTML = '';
+                if (!users || Object.keys(users).length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="3">Kullanıcı yok.</td></tr>`;
+                    return;
+                }
+                for (let uid in users) {
+                    const u = users[uid];
+                    const badgeClass = u.tier === 'paid' ? 'badge-paid' : 'badge-free';
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><b>${escapeHtml(u.user_id)}</b></td>
+                        <td><span class="${badgeClass}">${escapeHtml(u.tier.toUpperCase())}</span></td>
+                        <td class="actions-cell">
+                            <button class="btn-inline btn-secondary" onclick="copyUserToken('${escapeHtml(u.user_id)}')" style="padding:3px 8px; font-size:0.72rem;">Token Kopyala</button>
+                            <button class="btn-inline btn-danger" onclick="deleteUser('${escapeHtml(u.user_id)}')" style="padding:3px 8px; font-size:0.72rem;">Sil</button>
+                        </td>
+                    `;
+                    tr.dataset.token = u.token || '';
+                    tr.id = 'user-row-' + u.user_id;
+                    tbody.appendChild(tr);
+                }
+            } catch (e) {}
+        }
+
+        function copyUserToken(uid) {
+            const row = document.getElementById('user-row-' + uid);
+            if (!row || !row.dataset.token) return;
+            navigator.clipboard.writeText(row.dataset.token);
+            alert(`${uid} kullanıcısının JWT token değeri panoya kopyalandı.`);
+        }
+
+        document.getElementById('userForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const user_id = document.getElementById('newUserId').value.trim();
+            const tier = document.getElementById('newUserTier').value;
+            try {
+                const res = await adminFetch('/api/admin/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id, tier })
+                });
+                if (res.ok) {
+                    document.getElementById('newUserId').value = '';
+                    fetchUsers();
+                } else {
+                    alert('Kullanıcı eklenemedi.');
+                }
+            } catch (err) {}
+        });
+
+        async function deleteUser(uid) {
+            if (!confirm('Bu kullanıcıyı silmek istiyor musunuz?')) return;
+            await adminFetch(`/api/admin/users?user_id=${encodeURIComponent(uid)}`, { method: 'DELETE' });
+            fetchUsers();
+        }
+
+        function renderEpgDatalist(query = '') {
+            const datalist = document.getElementById('epgChannelsList');
+            if (!datalist) return;
+            datalist.innerHTML = '';
+            if (!Array.isArray(allEpgChannels) || allEpgChannels.length === 0) return;
+
+            const q = String(query || '').trim().toLowerCase();
+            const frag = document.createDocumentFragment();
+            let count = 0;
+            const MAX_OPTS = 250;
+
+            for (let i = 0; i < allEpgChannels.length && count < MAX_OPTS; i++) {
+                const ch = allEpgChannels[i];
+                const name = ch.display_names && ch.display_names[0] ? ch.display_names[0].value : ch.id;
+                const idLower = (ch.id || '').toLowerCase();
+                const nameLower = (name || '').toLowerCase();
+
+                if (q) {
+                    if (!idLower.includes(q) && !nameLower.includes(q)) continue;
+                } else if (allEpgChannels.length > MAX_OPTS && !idLower.endsWith('.tr')) {
+                    continue;
+                }
+
+                const opt = document.createElement('option');
+                opt.value = ch.id;
+                opt.textContent = `${name} | Kaynak: ${ch.source_name || 'main'}`;
+                frag.appendChild(opt);
+                count++;
+            }
+
+            if (count === 0 && !q) {
+                for (let i = 0; i < allEpgChannels.length && count < MAX_OPTS; i++) {
+                    const ch = allEpgChannels[i];
+                    const name = ch.display_names && ch.display_names[0] ? ch.display_names[0].value : ch.id;
+                    const opt = document.createElement('option');
+                    opt.value = ch.id;
+                    opt.textContent = `${name} | Kaynak: ${ch.source_name || 'main'}`;
+                    frag.appendChild(opt);
+                    count++;
+                }
+            }
+            datalist.appendChild(frag);
+        }
+
+        async function fetchEpgChannels() {
+            if (!adminToken) return;
+            try {
+                const res = await adminFetch('/api/admin/epg/channels');
+                allEpgChannels = await res.json();
+                renderEpgDatalist('');
+            } catch (e) {}
+        }
+
+        function canonicalUrlJS(raw) {
+            let u = String(raw || '').trim();
+            if (!u) return '';
+            const low = u.toLowerCase();
+            if (low.startsWith('acestream://')) {
+                return 'acestream://' + low.slice('acestream://'.length).replace(/^\/+|\/+$/g, '');
+            }
+            try {
+                const parsed = new URL(u);
+                if (parsed.pathname.toLowerCase().includes('/ace/getstream')) {
+                    const cid = (parsed.searchParams.get('id') || '').trim();
+                    if (cid) return 'acestream://' + cid.toLowerCase();
+                }
+                if (parsed.pathname !== '/') {
+                    parsed.pathname = parsed.pathname.replace(/\/+$/, '');
+                }
+                return parsed.toString();
+            } catch (_) {
+                return u.replace(/\/+$/, '');
+            }
+        }
+
+        function computeDuplicateUrlSet() {
+            const urlCounts = new Map();
+            const dupChannelIds = new Set();
+            const entries = Object.values(allStreams || {});
+            entries.forEach(s => {
+                const seenInChannel = new Set();
+                const urls = [s.source_url, ...(s.source_urls || [])].filter(Boolean);
+                urls.forEach(u => {
+                    const c = canonicalUrlJS(u);
+                    if (!c || seenInChannel.has(c)) return;
+                    seenInChannel.add(c);
+                    if (!urlCounts.has(c)) urlCounts.set(c, []);
+                    urlCounts.get(c).push(s.id);
+                });
+            });
+            for (const owners of urlCounts.values()) {
+                if (owners.length > 1) {
+                    owners.forEach(id => dupChannelIds.add(id));
+                }
+            }
+            return dupChannelIds;
+        }
+
+        function updateSelectionToolbar() {
+            // Remove stale IDs that no longer exist
+            for (const id of Array.from(selectedStreamIDs)) {
+                if (!allStreams[id]) selectedStreamIDs.delete(id);
+            }
+            const btn = document.getElementById('mergeSelectedBtn');
+            if (!btn) return;
+            const n = selectedStreamIDs.size;
+            btn.innerText = `🔗 Seçilenleri Birleştir (${n})`;
+            btn.disabled = n < 2;
+            btn.style.opacity = n < 2 ? '0.55' : '1';
+        }
+
+        function toggleStreamSelection(id, checked) {
+            if (checked) selectedStreamIDs.add(id);
+            else selectedStreamIDs.delete(id);
+            updateSelectionToolbar();
+        }
+
+        function toggleSelectAllVisible(checked) {
+            document.querySelectorAll('.stream-select-cb').forEach(cb => {
+                cb.checked = checked;
+                if (checked) selectedStreamIDs.add(cb.dataset.id);
+                else selectedStreamIDs.delete(cb.dataset.id);
+            });
+            updateSelectionToolbar();
+        }
+
+        function filterUnmapped() {
+            duplicateFilterActive = false;
+            document.getElementById('tableSearch').value = 'Atanmadı';
+            renderTable();
+        }
+
+        function filterDuplicates() {
+            duplicateFilterActive = true;
+            document.getElementById('tableSearch').value = '';
+            renderTable();
+        }
+
+        function clearSearch() {
+            duplicateFilterActive = false;
+            document.getElementById('tableSearch').value = '';
+            renderTable();
+        }
+
+        function renderTable() {
+            const query = document.getElementById('tableSearch').value.toLowerCase();
+            if (query !== '') duplicateFilterActive = false;
+            const tbody = document.getElementById('streamTableBody');
+            tbody.innerHTML = '';
+
+            const dupIds = computeDuplicateUrlSet();
+            const entries = Object.values(allStreams || {});
+            const filtered = entries.filter(s => {
+                if (duplicateFilterActive) {
+                    return dupIds.has(s.id);
+                }
+                if (query === 'atanmadı') {
+                    return !s.epg_id || s.epg_id === '' || s.epg_id === 'Atanmadı';
+                }
+                const urlHit = (s.source_url && s.source_url.toLowerCase().includes(query)) ||
+                               (s.source_urls && s.source_urls.some(u => u.toLowerCase().includes(query)));
+                return (s.name && s.name.toLowerCase().includes(query)) ||
+                       (s.id && s.id.toLowerCase().includes(query)) ||
+                       (s.epg_id && s.epg_id.toLowerCase().includes(query)) ||
+                       urlHit;
+            });
+
+            const dupInfo = dupIds.size > 0 ? ` • ⚠️ ${dupIds.size} Mükerrer URL'li Kanal` : '';
+            document.getElementById('channelCountBadge').innerText = `Toplam: ${entries.length} Kanal (Gösterilen: ${filtered.length})${dupInfo}`;
+            const selectAllEl = document.getElementById('selectAllStreams');
+            if (selectAllEl) selectAllEl.checked = false;
+            updateSelectionToolbar();
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">${duplicateFilterActive ? '✅ Mükerrer yayın URL\'sine sahip kanal bulunmadı.' : 'Kanal bulunamadı.'}</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(s => {
+                const badgeClass = s.tier === 'paid' ? 'badge-paid' : 'badge-free';
+                const aceBadge = s.is_acestream ? ` <span class="badge-live" style="background:#7c3aed;">ACESTREAM</span>` : '';
+                const dupBadge = dupIds.has(s.id) ? ` <span class="badge-live" style="background:#b45309;">⚠️ Mükerrer URL</span>` : '';
+                const altCount = s.source_urls && s.source_urls.length > 1 ? ` (${s.source_urls.length} Kaynak)` : '';
+                const statusBadge = s.is_streaming
+                    ? `<span class="badge-live">● FFmpeg Aktif</span>`
+                    : `<span class="badge-idle">Hazır (On-Demand)</span>`;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><input type="checkbox" class="stream-select-cb" data-id="${escapeHtml(s.id)}" ${selectedStreamIDs.has(s.id) ? 'checked' : ''}></td>
+                    <td><b>${escapeHtml(s.id)}</b></td>
+                    <td>${escapeHtml(s.name)}${dupBadge}</td>
+                    <td><span class="${badgeClass}">${escapeHtml((s.tier || 'free').toUpperCase())}</span>${aceBadge}</td>
+                    <td>${statusBadge}</td>
+                    <td><code style="word-break: break-all; font-size:0.78rem;">${escapeHtml(s.source_url)}</code><br><small style="color:var(--accent);">${escapeHtml(altCount)}</small></td>
+                    <td><code>${escapeHtml(s.epg_id || 'Atanmadı')}</code></td>
+                    <td>
+                        <div class="actions-cell">
+                            <a href="/player.html?channel_id=${encodeURIComponent(s.id)}" target="_blank" style="color:#38bdf8; text-decoration:none; font-weight:bold; font-size:0.8rem;">▶ Test</a>
+                            <button class="btn-inline btn-edit-ch">Düzenle</button>
+                            ${s.is_streaming ? `<button class="btn-inline btn-warning btn-stop-ch">Durdur</button>` : ''}
+                            <button class="btn-inline btn-danger btn-del-ch">Sil</button>
+                        </div>
+                    </td>
+                `;
+                tr.querySelector('.stream-select-cb').addEventListener('change', (e) => toggleStreamSelection(s.id, e.target.checked));
+                tr.querySelector('.btn-edit-ch').addEventListener('click', () => openEditModal(s.id));
+                const stopBtn = tr.querySelector('.btn-stop-ch');
+                if (stopBtn) stopBtn.addEventListener('click', () => stopChannelStream(s.id));
+                tr.querySelector('.btn-del-ch').addEventListener('click', () => deleteChannel(s.id));
+                tbody.appendChild(tr);
+            });
+        }
+
+        function openMergeModal() {
+            const ids = Array.from(selectedStreamIDs).filter(id => allStreams[id]);
+            if (ids.length < 2) return;
+            const sel = document.getElementById('mergeTargetSelect');
+            sel.innerHTML = '';
+            ids.forEach(id => {
+                const s = allStreams[id];
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = `${s.name} (${s.id}) — ${(s.source_urls || [s.source_url]).length} kaynak`;
+                sel.appendChild(opt);
+            });
+            document.getElementById('mergeErrorBox').style.display = 'none';
+            updateMergePreview();
+            document.getElementById('mergeModal').style.display = 'flex';
+        }
+
+        function closeMergeModal() {
+            document.getElementById('mergeModal').style.display = 'none';
+        }
+
+        function updateMergePreview() {
+            const targetId = document.getElementById('mergeTargetSelect').value;
+            const target = allStreams[targetId];
+            if (target) {
+                document.getElementById('mergeNewName').value = target.name;
+            }
+            const ids = Array.from(selectedStreamIDs).filter(id => allStreams[id]);
+            const seen = new Set();
+            const uniqueUrls = [];
+            const orderedIds = [targetId, ...ids.filter(id => id !== targetId)];
+            orderedIds.forEach(id => {
+                const s = allStreams[id];
+                if (!s) return;
+                [s.source_url, ...(s.source_urls || [])].filter(Boolean).forEach(u => {
+                    const c = canonicalUrlJS(u);
+                    if (c && !seen.has(c)) {
+                        seen.add(c);
+                        uniqueUrls.push(u);
+                    }
+                });
+            });
+            const box = document.getElementById('mergeUrlsPreview');
+            box.innerHTML = uniqueUrls.map((u, idx) =>
+                `<div style="margin-bottom:4px;"><b>#${idx + 1}:</b> <code>${escapeHtml(u)}</code></div>`
+            ).join('');
+        }
+
+        async function confirmMergeChannels() {
+            const targetId = document.getElementById('mergeTargetSelect').value;
+            const newName = document.getElementById('mergeNewName').value.trim();
+            const sourceIds = Array.from(selectedStreamIDs).filter(id => id !== targetId && allStreams[id]);
+            const errBox = document.getElementById('mergeErrorBox');
+            errBox.style.display = 'none';
+
+            try {
+                const res = await adminFetch('/api/admin/streams/merge', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target_id: targetId, source_ids: sourceIds, new_name: newName })
+                });
+                if (!res.ok) {
+                    errBox.innerText = await res.text();
+                    errBox.style.display = 'block';
+                    return;
+                }
+                const data = await res.json();
+                selectedStreamIDs.clear();
+                closeMergeModal();
+                const banner = document.getElementById('streamActionResult');
+                banner.style.display = 'block';
+                banner.innerText = `✅ ${data.merged_count} kanal "${(data.target_channel && data.target_channel.name) || targetId}" içinde birleştirildi (${(data.target_channel && data.target_channel.source_urls && data.target_channel.source_urls.length) || 1} kaynak).`;
+                fetchStreams();
+            } catch (e) {
+                errBox.innerText = 'Birleştirme hatası: ' + e.message;
+                errBox.style.display = 'block';
+            }
+        }
+
+        async function dedupeByURL() {
+            const banner = document.getElementById('streamActionResult');
+            banner.style.display = 'block';
+            banner.innerText = '⏳ Mükerrer yayın adresleri taranıyor ve birleştiriliyor...';
+            try {
+                const res = await adminFetch('/api/admin/streams/dedupe', { method: 'POST' });
+                if (!res.ok) {
+                    banner.innerText = '❌ Temizleme hatası: ' + await res.text();
+                    return;
+                }
+                const data = await res.json();
+                if (data.merged_count > 0) {
+                    banner.innerText = `✅ Aynı yayın adresine sahip ${data.merged_count} mükerrer kanal birleştirilip temizlendi.`;
+                } else {
+                    banner.innerText = '✅ Tüm kanalların yayın adresleri zaten benzersiz (mükerrer kanal yok).';
+                }
+                selectedStreamIDs.clear();
+                fetchStreams();
+            } catch (e) {
+                banner.innerText = '❌ Hata: ' + e.message;
+            }
+        }
+
+        async function deleteChannel(id) {
+            if (!confirm(`"${id}" kanalını kalıcı olarak silmek istediğinize emin misiniz?`)) return;
+            try {
+                const res = await adminFetch(`/api/admin/streams/delete?id=${encodeURIComponent(id)}`, {
+                    method: 'DELETE'
+                });
+                if (res.ok) {
+                    fetchStreams();
+                } else {
+                    alert('❌ Kanal silinemedi.');
+                }
+            } catch (e) {}
+        }
+
+        async function stopChannelStream(id) {
+            try {
+                const res = await adminFetch(`/api/admin/streams/stop?id=${encodeURIComponent(id)}`, {
+                    method: 'POST'
+                });
+                if (res.ok) {
+                    fetchStreams();
+                }
+            } catch (e) {}
+        }
+
+        function openAddModal() {
+            document.getElementById('addForm').reset();
+            document.getElementById('addErrorBox').style.display = 'none';
+            document.getElementById('addModal').style.display = 'flex';
+        }
+
+        function closeAddModal() {
+            document.getElementById('addModal').style.display = 'none';
+        }
+
+        document.getElementById('addForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errBox = document.getElementById('addErrorBox');
+            errBox.style.display = 'none';
+            const mainUrl = document.getElementById('addSourceUrl').value.trim();
+            const rawAlts = document.getElementById('addSourceUrls').value.trim();
+            const altList = rawAlts ? rawAlts.split('\n').map(u => u.trim()).filter(Boolean) : [];
+            const sourceUrls = [mainUrl, ...altList];
+
+            const payload = {
+                name: document.getElementById('addName').value.trim(),
+                tier: document.getElementById('addTier').value,
+                source_url: mainUrl,
+                source_urls: sourceUrls,
+                logo_url: document.getElementById('addLogoUrl').value.trim(),
+                epg_id: document.getElementById('addEpgId').value.trim()
+            };
+
+            const res = await adminFetch('/api/admin/streams', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                closeAddModal();
+                fetchStreams();
+            } else {
+                errBox.innerText = '❌ ' + (await res.text() || 'Kanal eklenirken hata oluştu.');
+                errBox.style.display = 'block';
+            }
+        });
+
+        function openEditModal(id) {
+            const s = allStreams[id];
+            if (!s) return;
+            document.getElementById('editErrorBox').style.display = 'none';
+            document.getElementById('editId').value = s.id;
+            document.getElementById('editName').value = s.name;
+            document.getElementById('editTier').value = s.tier || 'free';
+            const primaryCanon = canonicalUrlJS(s.source_url || '');
+            document.getElementById('editSourceUrl').value = s.source_url || '';
+            const altOnly = (s.source_urls || []).filter(u => u && canonicalUrlJS(u) !== primaryCanon);
+            document.getElementById('editSourceUrls').value = altOnly.join('\n');
+            document.getElementById('editLogoUrl').value = s.logo_url || '';
+            document.getElementById('editEpgId').value = s.epg_id || '';
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        document.getElementById('editForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errBox = document.getElementById('editErrorBox');
+            errBox.style.display = 'none';
+            const mainUrl = document.getElementById('editSourceUrl').value.trim();
+            const rawUrls = document.getElementById('editSourceUrls').value.trim();
+            const parsedAlts = rawUrls ? rawUrls.split('\n').map(u => u.trim()).filter(Boolean) : [];
+            const sourceUrls = mainUrl ? [mainUrl, ...parsedAlts] : parsedAlts;
+
+            const payload = {
+                id: document.getElementById('editId').value,
+                name: document.getElementById('editName').value.trim(),
+                tier: document.getElementById('editTier').value,
+                source_url: mainUrl,
+                source_urls: sourceUrls,
+                logo_url: document.getElementById('editLogoUrl').value.trim(),
+                epg_id: document.getElementById('editEpgId').value.trim()
+            };
+
+            const res = await adminFetch('/api/admin/streams/update', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                closeModal();
+                fetchStreams();
+                const banner = document.getElementById('streamActionResult');
+                banner.style.display = 'block';
+                banner.innerText = `✅ "${payload.name}" kanalı başarıyla güncellendi.`;
+            } else {
+                errBox.innerText = '❌ ' + (await res.text() || 'Güncelleme başarısız oldu.');
+                errBox.style.display = 'block';
+            }
+        });
+
+        document.getElementById('m3uForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const resultBox = document.getElementById('m3uResult');
+            resultBox.style.display = 'block';
+            resultBox.innerText = '⏳ M3U adresi indiriliyor, kanallar taranıyor, alternatif kaynaklar birleştiriliyor...';
+
+            const payload = {
+                m3u_content: document.getElementById('m3uContent').value.trim(),
+                tier: document.getElementById('m3uTier').value,
+                language: document.getElementById('m3uLanguage').value,
+                content_type: document.getElementById('m3uContentType').value,
+                auto_prune: document.getElementById('autoPrune').value === 'true',
+                insecure_tls: document.getElementById('m3uInsecureTls').checked
+            };
+
+            try {
+                const res = await adminFetch('/api/admin/m3u/import', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) {
+                    const txt = await res.text();
+                    resultBox.innerText = '❌ Hata: ' + txt;
+                    return;
+                }
+                const data = await res.json();
+                resultBox.innerHTML = `✅ <b>İşlem Tamamlandı!</b><br>
+                    • Yeni Eklenen Kanal: <b>${data.added_count}</b><br>
+                    • Birleştirilen Alternatif / Mükerrer Kaynak: <b style="color:#38bdf8;">${data.merged_count}</b> (Aynı URL Engellendi: <b>${data.deduped_url_count || 0}</b>)<br>
+                    • Silinen / Kara Liste: <b style="color:#e11d48;">${data.skipped_deleted}</b><br>
+                    • Temizlenen Ölü Kanal: <b style="color:#e11d48;">${data.pruned_count}</b>`;
+                fetchStreams();
+                fetchM3USources();
+            } catch (err) {
+                resultBox.innerText = '❌ Hata oluştu: ' + err.message;
+            }
+        });
+
+        document.getElementById('epgForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const resultBox = document.getElementById('epgResult');
+            resultBox.style.display = 'block';
+            resultBox.innerText = '⏳ EPG XMLTV indiriliyor ve akış modunda işleniyor (büyük .xml.gz dosyaları 15-60 sn sürebilir)...';
+
+            const offsetVal = parseInt(document.getElementById('epgOffset').value, 10);
+            const payload = {
+                id: "main_epg_" + Date.now(),
+                url: document.getElementById('epgUrl').value.trim(),
+                time_offset: isNaN(offsetVal) ? 999 : offsetVal
+            };
+
+            try {
+                const res = await adminFetch('/api/admin/epg/source', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) {
+                    const txt = await res.text();
+                    resultBox.innerText = '❌ EPG hatası: ' + txt;
+                    return;
+                }
+                const data = await res.json();
+                resultBox.innerHTML = `✅ <b>EPG Senkronize Edildi!</b><br>
+                    • Toplam EPG Kanalı: <b>${data.channel_count}</b><br>
+                    • Toplam Yayın Programı: <b>${data.programme_count}</b>`;
+                fetchEPGSources();
+                fetchEpgChannels();
+            } catch (err) {
+                resultBox.innerText = '❌ EPG eklenirken hata oluştu: ' + err.message;
+            }
+        });
+
+        async function autoMapEPG() {
+            if (!confirm('Tüm kanallar ile EPG kanalları akıllı isim benzerliğiyle eşleştirilsin mi?')) return;
+            try {
+                const res = await adminFetch('/api/admin/epg/auto-map', { method: 'POST' });
+                const data = await res.json();
+                alert(`✅ Başarıyla ${data.mapped_count} kanal EPG ile eşleştirildi!`);
+                fetchStreams();
+                fetchEPGSources();
+            } catch (e) {
+                alert('Hata oluştu: ' + e.message);
+            }
+        }
+
+        async function exportBackup() {
+            try {
+                const res = await adminFetch('/api/admin/backup/export');
+                if (!res.ok) return;
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'iptv_p2p_backup.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (e) {
+                alert('Yedek indirilemedi.');
+            }
+        }
+
+        async function importBackup(input) {
+            if (!input.files || !input.files[0]) return;
+            const file = input.files[0];
+            const text = await file.text();
+            try {
+                const res = await adminFetch('/api/admin/backup/import', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: text
+                });
+                if (res.ok) {
+                    alert('✅ Yedek başarıyla geri yüklendi!');
+                    fetchStreams();
+                    fetchM3USources();
+                    fetchUsers();
+                    fetchEPGSources();
+                } else {
+                    alert('❌ Geri yükleme başarısız oldu.');
+                }
+            } catch (e) {
+                alert('Hata: ' + e.message);
+            } finally {
+                input.value = '';
+            }
+        }
+
+        async function fetchAceStreamStatus() {
+            if (!adminToken) return;
+            try {
+                const res = await adminFetch('/api/admin/acestream/status');
+                const data = await res.json();
+                const badge = document.getElementById('aceStatusBadge');
+                const ver = document.getElementById('aceVersionInfo');
+                document.getElementById('aceEnginePath').innerText = data.engine_path || 'Yapılandırılmadı';
+
+                if (!data.enabled) {
+                    badge.className = 'badge-idle';
+                    badge.innerText = 'Devre Dışı';
+                    ver.innerText = 'config.yaml içinde enabled: false';
+                } else if (data.primary_ready) {
+                    badge.className = 'badge-live';
+                    badge.innerText = '● Motor Aktif';
+                    ver.innerText = `Sürüm: ${data.version || 'Hazır'} | Mod: ${data.stream_mode || 'ffmpeg_fmp4'} | Aktif Yayın: ${data.active_count || 0}`;
+                } else {
+                    badge.className = 'badge-paid';
+                    badge.innerText = data.binary_exists ? 'Kapalı (Başlatılabilir)' : 'ace_engine.exe Bulunamadı';
+                    ver.innerText = data.binary_exists ? 'Arama veya yayın açıldığında otomatik başlatılır' : 'Motor dosya yolunu kontrol edin';
+                }
+
+                const tbody = document.getElementById('aceSlotsBody');
+                tbody.innerHTML = '';
+                const sessions = data.active_sessions || [];
+                const slots = data.slots || [];
+                if (sessions.length > 0) {
+                    sessions.forEach(sess => {
+                        let infoHtml = `<b>${escapeHtml(sess.channel_id || '')}</b> <small style="color:var(--muted);">(${escapeHtml(sess.pid || '')})</small>`;
+                        if (sess.stats) {
+                            const kbps = Math.round(sess.stats.speed_down || 0);
+                            infoHtml += `<br><small style="color:var(--accent);">Durum: ${escapeHtml(sess.stats.status || '')} | Peer: ${sess.stats.peers || 0} | ${kbps} KB/s</small>`;
+                        }
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>#${sess.slot_index} (:${sess.http_port})</td>
+                            <td><span class="badge-live">Yayında</span></td>
+                            <td>${infoHtml}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else if (slots.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3">Slot bilgisi yok.</td></tr>';
+                } else {
+                    slots.forEach(s => {
+                        const stateHtml = s.running ? '<span class="badge-free">Hazır</span>' : '<span class="badge-idle">Beklemede</span>';
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>#${s.slot_index} (:${s.http_port})</td>
+                            <td>${stateHtml}</td>
+                            <td>Aktif yayın yok (${data.multi_port ? 'Çoklu Port' : 'Çoklu PID modu'})</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (e) {}
+        }
+
+        async function startAceEngine() {
+            try {
+                const res = await adminFetch('/api/admin/acestream/start', { method: 'POST' });
+                const data = await res.json();
+                if (!res.ok) {
+                    alert('❌ Motor başlatılamadı: ' + (data.error || res.statusText));
+                }
+                fetchAceStreamStatus();
+            } catch (e) {
+                alert('❌ Hata: ' + e.message);
+            }
+        }
+
+        async function stopAceEngine() {
+            if (!confirm('Tüm aktif AceStream yayın oturumlarını ve yönetilen engine süreçlerini durdurmak istiyor musunuz?')) return;
+            try {
+                await adminFetch('/api/admin/acestream/stop', { method: 'POST' });
+                fetchAceStreamStatus();
+                fetchStreams();
+            } catch (e) {}
+        }
+
+        document.getElementById('aceSearchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const q = document.getElementById('aceSearchQuery').value.trim();
+            const cat = document.getElementById('aceSearchCategory').value;
+            const fb = document.getElementById('aceSearchFeedback');
+            const tbody = document.getElementById('aceSearchResultsBody');
+
+            fb.style.display = 'block';
+            fb.innerText = '⏳ ace_engine.exe üzerinden aranıyor...';
+            tbody.innerHTML = '<tr><td colspan="3">Aranıyor...</td></tr>';
+
+            try {
+                const res = await adminFetch(`/api/admin/acestream/search?q=${encodeURIComponent(q)}&category=${encodeURIComponent(cat)}`);
+                const data = await res.json();
+                if (!res.ok) {
+                    fb.innerText = '❌ Arama hatası: ' + (data.error || res.statusText);
+                    tbody.innerHTML = '<tr><td colspan="3">Sonuç alınamadı.</td></tr>';
+                    return;
+                }
+                const items = data.results || [];
+                fb.innerHTML = `✅ <b>${items.length}</b> sonuç bulundu (Toplam eşleşme: ${data.total || items.length}).`;
+                tbody.innerHTML = '';
+                if (items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3">Eşleşen AceStream kanalı bulunamadı. Doğrudan <code>acestream://...</code> ID de yapıştırabilirsiniz.</td></tr>';
+                    return;
+                }
+                items.forEach(item => {
+                    const statusTag = item.status === 2
+                        ? '<span class="badge-live">Aktif</span>'
+                        : '<span class="badge-idle">Belirsiz</span>';
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>
+                            <b>${escapeHtml(item.name)}</b>
+                            ${item.categories && item.categories.length ? `<br><small style="color:var(--muted);">${escapeHtml(item.categories.join(', '))}</small>` : ''}
+                        </td>
+                        <td>
+                            <code style="font-size:0.72rem; word-break:break-all;">${escapeHtml(item.source_url)}</code><br>
+                            ${statusTag} <small style="color:var(--muted);">Uygunluk: ${Math.round((item.availability || 0) * 100)}%</small>
+                        </td>
+                        <td>
+                            <button class="btn-inline btn-success btn-ace-add">+ Kanallara Ekle</button>
+                        </td>
+                    `;
+                    tr.querySelector('.btn-ace-add').addEventListener('click', () => addAceStreamChannel(item));
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                fb.innerText = '❌ Bağlantı hatası: ' + err.message;
+                tbody.innerHTML = '<tr><td colspan="3">Hata oluştu.</td></tr>';
+            }
+        });
+
+        async function addAceStreamChannel(item) {
+            const tier = document.getElementById('aceAddTier').value;
+            try {
+                const res = await adminFetch('/api/admin/acestream/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: item.name,
+                        source_url: item.source_url,
+                        tier: tier
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    alert('❌ Kanal eklenemedi: ' + (data.error || res.statusText));
+                    return;
+                }
+                const fb = document.getElementById('aceSearchFeedback');
+                fb.style.display = 'block';
+                fb.innerHTML = `✅ <b>${escapeHtml(item.name)}</b> kanal listesine eklendi! <a href="/player.html?channel_id=${encodeURIComponent(data.channel.id)}" target="_blank" style="color:var(--accent); font-weight:bold;">▶ Oynatıcıda Aç</a>`;
+                fetchStreams();
+            } catch (err) {
+                alert('❌ Hata: ' + err.message);
+            }
+        }
+
+        async function fetchBillingSettings() {
+            if (!adminToken) return;
+            try {
+                const res = await adminFetch('/api/admin/billing/settings');
+                if (!res.ok) return;
+                const b = await res.json();
+                document.getElementById('billingUsdtNetwork').value = b.usdt_network || 'TRC20';
+                document.getElementById('billingUsdtAddress').value = b.usdt_address || '';
+                document.getElementById('billingMonthly').value = b.monthly_price_usdt ?? 10;
+                document.getElementById('billingQuarterly').value = b.quarterly_price_usdt ?? 25;
+                document.getElementById('billingYearly').value = b.yearly_price_usdt ?? 80;
+                document.getElementById('billingAutoVerify').checked = b.auto_verify_enabled !== false;
+            } catch (e) {}
+        }
+
+        document.getElementById('billingSettingsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fb = document.getElementById('billingFeedback');
+            fb.style.display = 'block';
+            fb.innerText = '⏳ Kaydediliyor...';
+            const payload = {
+                usdt_network: document.getElementById('billingUsdtNetwork').value,
+                usdt_address: document.getElementById('billingUsdtAddress').value.trim(),
+                monthly_price_usdt: parseFloat(document.getElementById('billingMonthly').value || '0') || 0,
+                quarterly_price_usdt: parseFloat(document.getElementById('billingQuarterly').value || '0') || 0,
+                yearly_price_usdt: parseFloat(document.getElementById('billingYearly').value || '0') || 0,
+                auto_verify_enabled: document.getElementById('billingAutoVerify').checked
+            };
+            try {
+                const res = await adminFetch('/api/admin/billing/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    fb.innerText = '❌ Hata: ' + (data.error || res.statusText);
+                    return;
+                }
+                fb.innerHTML = '✅ USDT cüzdan ve fiyat ayarları kaydedildi!';
+            } catch (err) {
+                fb.innerText = '❌ Kaydetme hatası: ' + err.message;
+            }
+        });
+
+        async function fetchBillingOrders() {
+            if (!adminToken) return;
+            try {
+                const res = await adminFetch('/api/admin/billing/orders');
+                if (!res.ok) return;
+                const orders = await res.json();
+                const tbody = document.getElementById('billingOrdersBody');
+                tbody.innerHTML = '';
+                if (!orders || orders.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted);">Henüz USDT ödeme siparişi yok.</td></tr>';
+                    return;
+                }
+                orders.slice(0, 40).forEach(ord => {
+                    const statusBadge = ord.status === 'confirmed'
+                        ? '<span class="badge-live">Onaylandı</span>'
+                        : (ord.status === 'expired' ? '<span class="badge-paid">Süresi Doldu</span>' : '<span class="badge-idle">Bekliyor</span>');
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><b>${escapeHtml(ord.username)}</b><br><small style="color:var(--muted);">${escapeHtml(ord.plan_id)} (${ord.duration_days} gün)</small></td>
+                        <td><code>${escapeHtml(ord.exact_amount_usdt)} USDT</code><br><small style="color:var(--accent);">${escapeHtml(ord.usdt_network)}</small></td>
+                        <td>${statusBadge}${ord.tx_hash ? `<br><small style="word-break:break-all; color:var(--muted);">${escapeHtml(ord.tx_hash.slice(0, 16))}...</small>` : ''}</td>
+                        <td>${ord.status === 'pending' ? `<button class="btn-inline btn-success btn-approve-ord">Onayla</button>` : '<small style="color:var(--muted);">—</small>'}</td>
+                    `;
+                    const appBtn = tr.querySelector('.btn-approve-ord');
+                    if (appBtn) {
+                        appBtn.addEventListener('click', () => approveBillingOrder(ord.order_id));
+                    }
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {}
+        }
+
+        async function approveBillingOrder(orderId) {
+            if (!confirm('Bu siparişi manuel olarak onaylayıp hesabı Paid yapmak istiyor musunuz?')) return;
+            try {
+                const res = await adminFetch(`/api/admin/billing/orders/approve?order_id=${encodeURIComponent(orderId)}`, { method: 'POST' });
+                if (res.ok) {
+                    fetchBillingOrders();
+                    fetchUsers();
+                } else {
+                    alert('❌ Onaylanamadı.');
+                }
+            } catch (e) {}
+        }
+
+        function initDashboard() {
+            if (!adminToken) {
+                showLoginModal();
+                return;
+            }
+            fetchMetrics();
+            fetchSwarms();
+            fetchStreams();
+            fetchM3USources();
+            fetchUsers();
+            fetchEPGSources();
+            fetchEpgChannels();
+            fetchAceStreamStatus();
+            fetchBillingSettings();
+            fetchBillingOrders();
+
+            if (!pollingStarted) {
+                pollingStarted = true;
+                setInterval(fetchMetrics, 3000);
+                setInterval(fetchSwarms, 3000);
+                setInterval(fetchAceStreamStatus, 5000);
+                setInterval(fetchStreams, 10000);
+                setInterval(fetchBillingOrders, 10000);
+            }
+        }
+
+        initDashboard();
+    </script>
+</body>
+</html>

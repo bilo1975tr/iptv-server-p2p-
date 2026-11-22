@@ -1,0 +1,1662 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV Cinema P2P - Canlı Oynatıcı & EPG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="/p2p-engine.js"></script>
+    <style>
+        :root {
+            --bg-dark: #070a12;
+            --panel-bg: rgba(18, 24, 38, 0.85);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --accent-glow: #06b6d4;
+            --purple-glow: #6366f1;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 340px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            border-right: 1px solid var(--card-border);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+            flex-shrink: 0;
+        }
+
+        .brand-header {
+            padding: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--card-border);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(6, 182, 212, 0.15));
+            gap: 8px;
+        }
+
+        .brand-logo-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .brand-logo {
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(135deg, var(--purple-glow), var(--accent-glow));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .brand-title {
+            font-size: 1rem;
+            font-weight: 800;
+            letter-spacing: -0.4px;
+            color: #ffffff;
+        }
+
+        .auth-btn {
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent-glow);
+            border: 1px solid var(--accent-glow);
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 0.72rem;
+            cursor: pointer;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .auth-btn:hover { background: var(--accent-glow); color: #0f172a; }
+
+        .search-box { padding: 10px 14px 8px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--card-border); }
+
+        .search-input, .sort-select {
+            width: 100%;
+            padding: 9px 12px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            color: white;
+            font-size: 0.85rem;
+            outline: none;
+        }
+        .search-input:focus, .sort-select:focus { border-color: var(--accent-glow); }
+
+        .filter-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .f-chip {
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--card-border);
+            background: rgba(15, 23, 42, 0.7);
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: auto;
+        }
+        .f-chip.active {
+            background: var(--accent-glow);
+            color: #070a12;
+            border-color: var(--accent-glow);
+        }
+        .f-chip.locked {
+            opacity: 0.65;
+        }
+
+        .channel-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .channel-item {
+            padding: 10px 11px;
+            border-radius: 10px;
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid transparent;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .channel-item:hover { background: rgba(51, 65, 85, 0.6); }
+        .channel-item.active {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(6, 182, 212, 0.25));
+            border-color: var(--accent-glow);
+        }
+
+        .fav-star-btn {
+            background: transparent;
+            border: none;
+            padding: 2px 4px;
+            width: auto;
+            font-size: 1rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            flex-shrink: 0;
+            line-height: 1;
+        }
+        .fav-star-btn.starred { color: #fbbf24; }
+        .fav-star-btn.locked { opacity: 0.45; }
+
+        .channel-info {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            overflow: hidden;
+            flex: 1;
+            min-width: 0;
+        }
+        .channel-name {
+            font-weight: 600;
+            font-size: 0.88rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .channel-nowplaying {
+            font-size: 0.7rem;
+            color: var(--accent-glow);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .badge {
+            font-size: 0.62rem;
+            padding: 2px 5px;
+            border-radius: 5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+        .badge-free { background: rgba(16, 185, 129, 0.2); color: var(--success); border: 1px solid var(--success); }
+        .badge-paid { background: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid var(--danger); }
+        .badge-viewers { background: rgba(56, 189, 248, 0.14); color: #bae6fd; border: 1px solid rgba(56, 189, 248, 0.35); }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .top-bar {
+            min-height: 66px;
+            padding: 10px 24px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .now-playing {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .live-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--danger);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--danger);
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.95); }
+            70% { transform: scale(1); }
+            100% { transform: scale(0.95); }
+        }
+
+        .stats-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .pill {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--card-border);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-main);
+            text-decoration: none;
+        }
+
+        .player-container {
+            flex: 1;
+            padding: 18px 24px;
+            display: flex;
+            gap: 20px;
+            overflow: hidden;
+        }
+
+        .video-wrapper {
+            flex: 1;
+            background: #000;
+            border-radius: 14px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid var(--card-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .video-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(7, 10, 18, 0.88);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 24px;
+            gap: 12px;
+        }
+
+        .right-panel {
+            width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .panel-card {
+            background: var(--panel-bg);
+            border-radius: 14px;
+            border: 1px solid var(--card-border);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .panel-title {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: var(--accent-glow);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .epg-show-box {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+        }
+        .epg-show-box:hover { border-color: var(--accent-glow); }
+        .epg-time { font-size: 0.72rem; color: var(--accent-glow); font-weight: 600; }
+        .epg-name { font-size: 0.85rem; font-weight: 700; margin-top: 2px; }
+        .epg-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; display: none; }
+        .epg-show-box.expanded .epg-desc { display: block; }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        .metric-label { color: var(--text-muted); }
+        .metric-val { font-weight: 600; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.75);
+            backdrop-filter: blur(8px);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: #1e293b;
+            padding: 28px;
+            border-radius: 14px;
+            width: 420px;
+            max-width: 92%;
+            border: 1px solid #475569;
+        }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: var(--text-muted); }
+        input, button {
+            width: 100%;
+            padding: 11px;
+            border-radius: 8px;
+            border: 1px solid #475569;
+            background-color: #0f172a;
+            color: white;
+            font-size: 0.9rem;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--purple-glow), var(--accent-glow));
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            margin-top: 8px;
+        }
+
+        @media (max-width: 960px) {
+            body { flex-direction: column; height: auto; overflow: auto; }
+            .sidebar { width: 100%; max-height: 280px; border-right: none; border-bottom: 1px solid var(--card-border); }
+            .player-container { flex-direction: column; overflow: visible; }
+            .video-wrapper { min-height: 260px; }
+            .right-panel { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="brand-header">
+            <div class="brand-logo-area">
+                <div class="brand-logo">📺</div>
+                <div>
+                    <div class="brand-title">IPTV CINEMA P2P</div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted);" id="userBadge">Misafir Oturumu</div>
+                </div>
+            </div>
+            <button class="auth-btn" id="headerAuthBtn" onclick="openLoginModal()">Giriş / Kaydol</button>
+        </div>
+
+        <div class="search-box">
+            <input type="text" id="searchInput" class="search-input" aria-label="Kanal veya Program Ara" placeholder="🔍 Kanal veya program ara...">
+            <select id="sortSelect" class="sort-select" aria-label="Kanal Sıralama" onchange="renderChannelList()">
+                <option value="viewers_desc">🔥 İzleyici (Çoktan Aza)</option>
+                <option value="viewers_asc">👁 İzleyici (Azdan Çoğa)</option>
+                <option value="name_asc">🔤 İsim (A → Z)</option>
+                <option value="name_desc">🔤 İsim (Z → A)</option>
+                <option value="fav_first">⭐ Önce Favoriler</option>
+                <option value="free_first">🆓 Önce Ücretsiz</option>
+                <option value="paid_first">💎 Önce Ücretli</option>
+            </select>
+            <div class="filter-chips" id="sidebarFilterChips">
+                <button type="button" class="f-chip active" data-filter="all" onclick="setChannelFilter('all')">Tümü</button>
+                <button type="button" class="f-chip locked" id="favFilterChip" data-filter="favorites" onclick="setChannelFilter('favorites')">🔒 Favoriler</button>
+                <button type="button" class="f-chip" data-filter="free" onclick="setChannelFilter('free')">FREE</button>
+                <button type="button" class="f-chip" data-filter="paid" onclick="setChannelFilter('paid')">PAID</button>
+                <button type="button" class="f-chip" data-filter="acestream" onclick="setChannelFilter('acestream')">⚡ ACE</button>
+            </div>
+        </div>
+
+        <div class="channel-list" id="channelList"></div>
+    </div>
+
+    <div class="main-content">
+        <div class="top-bar">
+            <div class="now-playing">
+                <div class="live-dot"></div>
+                <div>
+                    <h3 id="currentChannelName" style="font-size: 1.05rem; font-weight: 700;">Yükleniyor...</h3>
+                    <div style="font-size: 0.78rem; color: var(--text-muted);" id="currentChannelTier">Canlı Yayın</div>
+                </div>
+            </div>
+
+            <div class="stats-pills">
+                <div class="pill">
+                    <span style="color: #38bdf8">👁 İzleyici:</span>
+                    <strong id="activeChannelViewers">0 kişi</strong>
+                </div>
+                <div class="pill">
+                    <span style="color: var(--accent-glow)">⚡ Aktarım:</span>
+                    <strong id="transportMode">HLS Failover Proxy</strong>
+                </div>
+                <div class="pill">
+                    <span style="color: var(--success)">🌐 Swarm:</span>
+                    <strong id="p2pPillStatus">Bağlanıyor...</strong>
+                </div>
+                <a href="/multiview.html" class="pill" style="border-color: rgba(167,139,250,0.45); color:#c4b5fd;">🧩 Multiview</a>
+                <a href="/admin/" class="pill" style="border-color: rgba(56,189,248,0.4);">⚙️ Admin</a>
+            </div>
+        </div>
+
+        <div class="player-container">
+            <div class="video-wrapper">
+                <video id="videoPlayer" controls autoplay muted playsinline></video>
+                <div class="video-overlay" id="videoOverlay">
+                    <div id="overlayTitle" style="font-size: 1.1rem; font-weight: 700; color: var(--warning);"></div>
+                    <div id="overlayMsg" style="font-size: 0.85rem; color: var(--text-muted); max-width: 380px;"></div>
+                    <button id="overlayBtn" class="btn-primary" style="width: auto; padding: 10px 20px;" onclick="openLoginModal('login')">Giriş Yap / Kaydol</button>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="panel-card">
+                    <div class="panel-title">
+                        <span>📅 Canlı TV Rehberi</span>
+                        <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: 400;">Detay için tıkla</span>
+                    </div>
+
+                    <div class="epg-show-box" onclick="this.classList.toggle('expanded')">
+                        <div class="epg-time" id="currShowTime">Şu an: --:-- - --:--</div>
+                        <div class="epg-name" id="currShowTitle">Yayın bilgisi yükleniyor...</div>
+                        <div class="epg-desc" id="currShowDesc"></div>
+                    </div>
+
+                    <div class="epg-show-box" onclick="this.classList.toggle('expanded')" style="opacity: 0.85;">
+                        <div class="epg-time" id="nextShowTime">Sonraki: --:-- - --:--</div>
+                        <div class="epg-name" id="nextShowTitle">--</div>
+                        <div class="epg-desc" id="nextShowDesc"></div>
+                    </div>
+                </div>
+
+                <div class="panel-card">
+                    <div class="panel-title" style="font-size: 0.85rem;">📊 Canlı Bağlantı Metrikleri</div>
+                    <div class="metric-row">
+                        <span class="metric-label">H.265 (HEVC)</span>
+                        <span class="metric-val" id="h265Support">--</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Sinyalleşme</span>
+                        <span class="metric-val" id="p2pStatus">Bekleniyor</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Swarm Eşleri</span>
+                        <span class="metric-val" id="swarmPeersVal">0 Peer</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Yüklenen Segment</span>
+                        <span class="metric-val" id="chunkSeq">#0</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Son Yanıt Süresi</span>
+                        <span class="metric-val" id="latencyVal">-- ms</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">P2P Tasarruf</span>
+                        <span class="metric-val" id="p2pOffloadVal">%0 (0 KB)</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Upload Free/Guest (%10)</span>
+                        <span class="metric-val" id="uploadFreeVal">0 KB/s</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Upload Paid (%10)</span>
+                        <span class="metric-val" id="uploadPaidVal">0 KB/s</span>
+                    </div>
+                    <div class="metric-row" style="border-bottom:none; padding-top:8px;">
+                        <span class="metric-label">Hat Upload Limiti (%20)</span>
+                        <select id="uploadProfileSelect" onchange="changeUploadProfile(this.value)" style="background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:6px; padding:3px 6px; font-size:0.75rem;">
+                            <option value="auto" selected>Otomatik (WebRTC)</option>
+                            <option value="5">5 Mbps (1 Mbps)</option>
+                            <option value="10">10 Mbps (2 Mbps)</option>
+                            <option value="25">25 Mbps (5 Mbps)</option>
+                            <option value="50">50 Mbps (10 Mbps)</option>
+                            <option value="100">100 Mbps (20 Mbps)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Account Login / Register / USDT Payment Modal -->
+    <div id="loginModal" class="modal" onclick="if(event.target===this) closeLoginModal()">
+        <div class="modal-content" style="width: 460px; max-height: 90vh; overflow-y: auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                <h2 style="color: var(--accent-glow); margin:0;">👤 Hesap & Abonelik</h2>
+                <button type="button" onclick="closeLoginModal()" style="width:auto; padding:5px 10px; background:#334155; border:none; cursor:pointer;">✕</button>
+            </div>
+
+            <div id="authNotice" style="display:none; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.4); padding:8px 10px; border-radius:8px; font-size:0.8rem; color:#bae6fd; margin-bottom:12px;"></div>
+
+            <!-- Logged in account panel -->
+            <div id="accountProfilePane" style="display:none; margin-bottom:14px;">
+                <div style="background:#0f172a; border:1px solid #334155; border-radius:10px; padding:14px; margin-bottom:12px;">
+                    <div style="font-size:0.85rem; color:var(--text-muted);">Giriş Yapılan Hesap</div>
+                    <div style="font-size:1.1rem; font-weight:800; margin-top:4px;" id="profileUserName">-</div>
+                    <div style="font-size:0.82rem; margin-top:4px;" id="profileTierInfo">-</div>
+                </div>
+                <div id="upgradeSection" style="display:none; margin-bottom:12px;">
+                    <label>Ücretli (Paid) Pakete Yükselt (Otomatik USDT):</label>
+                    <select id="upgradePlanSelect" style="width:100%; padding:10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:white; margin-bottom:8px;"></select>
+                    <button type="button" class="btn-primary" onclick="startUpgradeOrder()">💎 USDT ile Yükselt</button>
+                </div>
+                <button type="button" onclick="logoutUser()" style="background-color: #7f1d1d; border:none; cursor:pointer;">Çıkış Yap (Misafir Moduna Dön)</button>
+            </div>
+
+            <!-- Guest Tabs: Giriş Yap / Kaydol -->
+            <div id="authTabsWrap">
+                <div style="display:flex; gap:8px; margin-bottom:14px;">
+                    <button type="button" id="tabLoginBtn" onclick="switchAuthTab('login')" style="flex:1; cursor:pointer; font-weight:700; border:1px solid var(--accent-glow); background:rgba(6,182,212,0.2);">🔑 Giriş Yap</button>
+                    <button type="button" id="tabRegisterBtn" onclick="switchAuthTab('register')" style="flex:1; cursor:pointer; font-weight:700; border:1px solid #475569; background:#0f172a;">✨ Kaydol</button>
+                </div>
+
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="loginUsername">Kullanıcı Adı</label>
+                        <input type="text" id="loginUsername" required placeholder="kullanici_adi" autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Şifre</label>
+                        <input type="password" id="loginPassword" required placeholder="••••••" autocomplete="current-password">
+                    </div>
+                    <div id="loginErrorBox" style="color: var(--danger); font-size: 0.8rem; margin-bottom: 8px; display:none;"></div>
+                    <button type="submit" class="btn-primary">Giriş Yap</button>
+                </form>
+
+                <form id="registerForm" style="display:none;">
+                    <div class="form-group">
+                        <label for="regUsername">Kullanıcı Adı</label>
+                        <input type="text" id="regUsername" required placeholder="En az 3 karakter (harf/rakam)" autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="regPassword">Şifre</label>
+                        <input type="password" id="regPassword" required minlength="6" placeholder="En az 6 karakter" autocomplete="new-password">
+                    </div>
+                    <div class="form-group">
+                        <label for="regPlanSelect">Üyelik Paketi Seçin</label>
+                        <select id="regPlanSelect" style="width:100%; padding:11px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:white; font-size:0.9rem;">
+                            <option value="free">🆓 Free (Ücretsiz — Favori + Ücretsiz Kanallar)</option>
+                        </select>
+                        <div id="regPlanHint" style="font-size:0.75rem; color:var(--text-muted); margin-top:6px;"></div>
+                    </div>
+                    <div id="regErrorBox" style="color: var(--danger); font-size: 0.8rem; margin-bottom: 8px; display:none;"></div>
+                    <button type="submit" class="btn-primary">Hesap Oluştur</button>
+                </form>
+            </div>
+
+            <!-- Automatic USDT Payment Pane -->
+            <div id="usdtPaymentPane" style="display:none;">
+                <div style="background:rgba(16,185,129,0.1); border:1px solid var(--success); border-radius:10px; padding:12px; margin-bottom:12px;">
+                    <div style="font-weight:700; color:var(--success); font-size:0.95rem;">⚡ Tam Otomatik USDT Doğrulama</div>
+                    <div style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">
+                        Aşağıdaki adrese <b>tam olarak belirtilen tutarı</b> gönderin. Blockchain üzerinden ödeme algılandığı anda hesabınız otomatik açılacaktır.
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Ağ (Network)</label>
+                    <div id="payNetworkVal" style="padding:9px; background:#0f172a; border:1px solid #334155; border-radius:8px; font-weight:700; color:var(--accent-glow);">TRC20</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Alıcı USDT Cüzdan Adresi</label>
+                    <div style="display:flex; gap:6px;">
+                        <input type="text" id="payAddressInput" readonly style="font-size:0.8rem;">
+                        <button type="button" onclick="copyText('payAddressInput')" style="width:auto; padding:0 12px; cursor:pointer; background:#334155;">📋</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Gönderilecek Tam Tutar (USDT)</label>
+                    <div style="display:flex; gap:6px;">
+                        <input type="text" id="payExactAmountInput" readonly style="font-weight:800; color:#fbbf24;">
+                        <button type="button" onclick="copyText('payExactAmountInput')" style="width:auto; padding:0 12px; cursor:pointer; background:#334155;">📋</button>
+                    </div>
+                </div>
+
+                <div id="payLiveStatus" style="padding:10px; border-radius:8px; background:#0f172a; border:1px solid #334155; font-size:0.82rem; color:#38bdf8; margin-bottom:12px;">
+                    ⏳ Ödeme bekleniyor... Otomatik kontrol aktif.
+                </div>
+
+                <div class="form-group" style="border-top:1px solid #334155; padding-top:10px;">
+                    <label for="manualTxHash">İsteğe Bağlı: İşlem Hash (TX ID) ile Hemen Kontrol Et</label>
+                    <div style="display:flex; gap:6px;">
+                        <input type="text" id="manualTxHash" placeholder="0x... veya Tron TX ID">
+                        <button type="button" onclick="submitManualTxHash()" class="btn-primary" style="width:auto; margin-top:0; padding:0 14px;">Doğrula</button>
+                    </div>
+                </div>
+
+                <button type="button" onclick="cancelPendingOrderView()" style="background-color:#475569; border:none; cursor:pointer;">← Geri Dön</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        let currentChannelID = urlParams.get('channel_id') || '';
+        const viewerTabId = 'tab_' + Math.random().toString(36).slice(2, 10);
+
+        // Auth & Favorites stay strictly in JS memory + HttpOnly server cookie (no localStorage token)
+        let token = urlParams.get('token') || '';
+        let currentUser = null;
+        let userFavorites = new Set();
+        let billingPlans = null;
+        let activeOrderId = '';
+        let paymentPollTimer = null;
+
+        let activeChannels = [];
+        let channelFilter = 'all';
+        let epgGuideData = {};
+        let hlsInstance = null;
+        let msePollTimer = null;
+        let heartbeatTimer = null;
+        let activeMediaSource = null;
+        let p2pEngine = null;
+        let fragCount = 0;
+
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function authHeaders(extra = {}) {
+            const h = Object.assign({ 'X-Requested-With': 'XMLHttpRequest' }, extra);
+            if (token) h['Authorization'] = 'Bearer ' + token;
+            return h;
+        }
+
+        function copyText(inputId) {
+            const el = document.getElementById(inputId);
+            if (!el) return;
+            navigator.clipboard.writeText(el.value);
+        }
+
+        function switchAuthTab(tab) {
+            const isLogin = tab === 'login';
+            document.getElementById('loginForm').style.display = isLogin ? 'block' : 'none';
+            document.getElementById('registerForm').style.display = isLogin ? 'none' : 'block';
+            document.getElementById('tabLoginBtn').style.background = isLogin ? 'rgba(6,182,212,0.2)' : '#0f172a';
+            document.getElementById('tabLoginBtn').style.borderColor = isLogin ? 'var(--accent-glow)' : '#475569';
+            document.getElementById('tabRegisterBtn').style.background = !isLogin ? 'rgba(6,182,212,0.2)' : '#0f172a';
+            document.getElementById('tabRegisterBtn').style.borderColor = !isLogin ? 'var(--accent-glow)' : '#475569';
+        }
+
+        async function refreshBillingPlans() {
+            try {
+                const res = await fetch('/api/billing/plans');
+                if (res.ok) {
+                    billingPlans = await res.json();
+                    populatePlanSelectors();
+                }
+            } catch (_) {}
+        }
+
+        function openLoginModal(tab = 'login', notice = '') {
+            const noticeEl = document.getElementById('authNotice');
+            if (notice) {
+                noticeEl.innerText = notice;
+                noticeEl.style.display = 'block';
+            } else {
+                noticeEl.style.display = 'none';
+            }
+
+            document.getElementById('usdtPaymentPane').style.display = 'none';
+            if (currentUser && currentUser.user_id) {
+                document.getElementById('authTabsWrap').style.display = 'none';
+                document.getElementById('accountProfilePane').style.display = 'block';
+                document.getElementById('profileUserName').innerText = currentUser.user_id;
+                const expText = currentUser.paid_until ? ` (Bitiş: ${new Date(currentUser.paid_until).toLocaleDateString('tr-TR')})` : '';
+                document.getElementById('profileTierInfo').innerHTML = currentUser.tier === 'paid'
+                    ? `<span style="color:var(--success)">💎 Ücretli (Paid) Abone${escapeHtml(expText)}</span>`
+                    : `<span style="color:var(--accent-glow)">🆓 Ücretsiz (Free) Üye — Favoriler Aktif</span>`;
+                document.getElementById('upgradeSection').style.display = currentUser.tier !== 'paid' ? 'block' : 'none';
+            } else {
+                document.getElementById('accountProfilePane').style.display = 'none';
+                document.getElementById('authTabsWrap').style.display = 'block';
+                switchAuthTab(tab);
+            }
+            populatePlanSelectors();
+            refreshBillingPlans();
+            document.getElementById('loginModal').style.display = 'flex';
+        }
+
+        function closeLoginModal() {
+            document.getElementById('loginModal').style.display = 'none';
+            if (paymentPollTimer) {
+                clearInterval(paymentPollTimer);
+                paymentPollTimer = null;
+            }
+        }
+
+        function cancelPendingOrderView() {
+            if (paymentPollTimer) {
+                clearInterval(paymentPollTimer);
+                paymentPollTimer = null;
+            }
+            activeOrderId = '';
+            document.getElementById('usdtPaymentPane').style.display = 'none';
+            if (currentUser) {
+                document.getElementById('accountProfilePane').style.display = 'block';
+            } else {
+                document.getElementById('authTabsWrap').style.display = 'block';
+            }
+        }
+
+        function applyUserSession(user, newToken) {
+            if (newToken) token = newToken;
+            currentUser = user || null;
+            userFavorites = new Set((user && Array.isArray(user.favorites)) ? user.favorites : []);
+            updateUserBadge();
+            renderChannelList();
+        }
+
+        function updateUserBadge() {
+            const badge = document.getElementById('userBadge');
+            const authBtn = document.getElementById('headerAuthBtn');
+            const favChip = document.getElementById('favFilterChip');
+
+            if (currentUser && currentUser.user_id) {
+                const icon = currentUser.tier === 'paid' ? '💎' : '✔';
+                badge.innerHTML = `<span style="color: var(--success)">${icon} ${escapeHtml(currentUser.user_id)} (${escapeHtml((currentUser.tier || 'free').toUpperCase())})</span>`;
+                authBtn.innerText = 'Hesabım';
+                favChip.classList.remove('locked');
+                favChip.innerText = `⭐ Favoriler (${userFavorites.size})`;
+            } else {
+                badge.innerText = 'Misafir Oturumu';
+                authBtn.innerText = 'Giriş / Kaydol';
+                favChip.classList.add('locked');
+                favChip.innerText = '🔒 Favoriler';
+                if (channelFilter === 'favorites') {
+                    channelFilter = 'all';
+                    document.querySelectorAll('.f-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === 'all'));
+                }
+            }
+        }
+
+        async function loadSessionAndPlans() {
+            try {
+                const [meRes, planRes] = await Promise.all([
+                    fetch('/api/auth/me', { credentials: 'include', headers: authHeaders() }),
+                    fetch('/api/billing/plans')
+                ]);
+                if (planRes.ok) {
+                    billingPlans = await planRes.json();
+                    populatePlanSelectors();
+                }
+                if (meRes.ok) {
+                    const me = await meRes.json();
+                    if (me.authenticated && me.user) {
+                        applyUserSession(me.user, me.token || '');
+                        return;
+                    }
+                }
+            } catch (_) {}
+            populatePlanSelectors();
+            updateUserBadge();
+        }
+
+        function populatePlanSelectors() {
+            const regSel = document.getElementById('regPlanSelect');
+            const upgSel = document.getElementById('upgradePlanSelect');
+            const hint = document.getElementById('regPlanHint');
+            const prevRegVal = regSel.value;
+            const prevUpgVal = upgSel.value;
+
+            regSel.innerHTML = '<option value="free">🆓 Free (Ücretsiz — Favori + Ücretsiz Kanallar)</option>';
+            upgSel.innerHTML = '';
+
+            const plans = billingPlans || {
+                configured: false,
+                usdt_network: 'TRC20',
+                monthly_price_usdt: 10,
+                quarterly_price_usdt: 25,
+                yearly_price_usdt: 80
+            };
+            const net = plans.usdt_network || 'TRC20';
+            const addOpt = (id, label, price) => {
+                if (price > 0) {
+                    const suffix = plans.configured ? net : `${net} — Cüzdan Bekleniyor`;
+                    const txt = `💎 ${label} — ${price} USDT (${suffix})`;
+                    const opt1 = document.createElement('option');
+                    opt1.value = id;
+                    opt1.textContent = txt;
+                    regSel.appendChild(opt1);
+
+                    const opt2 = document.createElement('option');
+                    opt2.value = id;
+                    opt2.textContent = txt;
+                    upgSel.appendChild(opt2);
+                }
+            };
+            addOpt('monthly', 'Ücretli 1 Aylık', plans.monthly_price_usdt);
+            addOpt('quarterly', 'Ücretli 3 Aylık', plans.quarterly_price_usdt);
+            addOpt('yearly', 'Ücretli 1 Yıllık', plans.yearly_price_usdt);
+
+            if (prevRegVal && Array.from(regSel.options).some(o => o.value === prevRegVal)) {
+                regSel.value = prevRegVal;
+            }
+            if (prevUpgVal && Array.from(upgSel.options).some(o => o.value === prevUpgVal)) {
+                upgSel.value = prevUpgVal;
+            }
+
+            if (!plans.configured) {
+                hint.style.color = '#fbbf24';
+                hint.innerText = '⚠️ Admin panelinden henüz USDT cüzdan adresi girilmemiş. Ücretli kayıt için Admin → 💳 USDT Ödeme bölümünden cüzdan ekleyin.';
+            } else {
+                hint.style.color = 'var(--text-muted)';
+                hint.innerText = `Ücretli paket seçildiğinde ${net} USDT ile tam otomatik ödeme ve doğrulama ekranı açılır.`;
+            }
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errBox = document.getElementById('loginErrorBox');
+            errBox.style.display = 'none';
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    errBox.innerText = data.error || 'Giriş yapılamadı.';
+                    errBox.style.display = 'block';
+                    return;
+                }
+                applyUserSession(data.user, data.token);
+                closeLoginModal();
+                if (currentChannelID) playChannel(currentChannelID);
+            } catch (_) {
+                errBox.innerText = 'Sunucuya bağlanılamadı.';
+                errBox.style.display = 'block';
+            }
+        });
+
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errBox = document.getElementById('regErrorBox');
+            errBox.style.display = 'none';
+            const username = document.getElementById('regUsername').value.trim();
+            const password = document.getElementById('regPassword').value;
+            const plan = document.getElementById('regPlanSelect').value;
+
+            try {
+                const res = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ username, password, plan })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    errBox.innerText = data.error || 'Kayıt başarısız.';
+                    errBox.style.display = 'block';
+                    return;
+                }
+                if (data.status === 'payment_required' && data.order) {
+                    showUSDTPaymentOrder(data.order);
+                    return;
+                }
+                applyUserSession(data.user, data.token);
+                closeLoginModal();
+                if (currentChannelID) playChannel(currentChannelID);
+            } catch (_) {
+                errBox.innerText = 'Sunucuya bağlanılamadı.';
+                errBox.style.display = 'block';
+            }
+        });
+
+        async function startUpgradeOrder() {
+            const plan = document.getElementById('upgradePlanSelect').value;
+            const notice = document.getElementById('authNotice');
+            notice.style.display = 'none';
+            try {
+                const res = await fetch('/api/auth/upgrade', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ plan })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    notice.innerText = data.error || 'Sipariş oluşturulamadı';
+                    notice.style.display = 'block';
+                    return;
+                }
+                if (data.order) showUSDTPaymentOrder(data.order);
+            } catch (e) {
+                notice.innerText = 'Sunucuya bağlanılamadı.';
+                notice.style.display = 'block';
+            }
+        }
+
+        function showUSDTPaymentOrder(order) {
+            activeOrderId = order.order_id;
+            document.getElementById('authTabsWrap').style.display = 'none';
+            document.getElementById('accountProfilePane').style.display = 'none';
+            document.getElementById('usdtPaymentPane').style.display = 'block';
+
+            document.getElementById('payNetworkVal').innerText = order.usdt_network || 'TRC20';
+            document.getElementById('payAddressInput').value = order.usdt_address || '';
+            document.getElementById('payExactAmountInput').value = order.exact_amount_usdt || '';
+            document.getElementById('manualTxHash').value = '';
+            document.getElementById('payLiveStatus').innerHTML = '⏳ Ödeme bekleniyor... Blockchain otomatik kontrol ediliyor.';
+
+            if (paymentPollTimer) clearInterval(paymentPollTimer);
+            paymentPollTimer = setInterval(pollOrderStatus, 4000);
+        }
+
+        async function pollOrderStatus() {
+            if (!activeOrderId) return;
+            try {
+                const res = await fetch(`/api/auth/payment-status?order_id=${encodeURIComponent(activeOrderId)}`, { credentials: 'include' });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.status === 'confirmed' && data.user) {
+                    clearInterval(paymentPollTimer);
+                    paymentPollTimer = null;
+                    document.getElementById('payLiveStatus').innerHTML = '<span style="color:var(--success)">✅ Ödeme doğrulandı! Hesabınız açılıyor...</span>';
+                    applyUserSession(data.user, data.token);
+                    setTimeout(() => {
+                        closeLoginModal();
+                        if (currentChannelID) playChannel(currentChannelID);
+                    }, 900);
+                } else if (data.status === 'expired') {
+                    clearInterval(paymentPollTimer);
+                    paymentPollTimer = null;
+                    document.getElementById('payLiveStatus').innerHTML = '<span style="color:var(--danger)">❌ Sipariş süresi doldu. Lütfen yeniden başlatın.</span>';
+                }
+            } catch (_) {}
+        }
+
+        async function submitManualTxHash() {
+            const txHash = document.getElementById('manualTxHash').value.trim();
+            if (!activeOrderId || !txHash) return;
+            const box = document.getElementById('payLiveStatus');
+            box.innerText = '⏳ TX Hash blockchain üzerinden doğrulanıyor...';
+            try {
+                const res = await fetch('/api/auth/verify-tx', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ order_id: activeOrderId, tx_hash: txHash })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    box.innerHTML = `<span style="color:var(--danger)">❌ ${escapeHtml(data.error || 'Doğrulanamadı')}</span>`;
+                    return;
+                }
+                if (data.status === 'confirmed' && data.user) {
+                    clearInterval(paymentPollTimer);
+                    paymentPollTimer = null;
+                    box.innerHTML = '<span style="color:var(--success)">✅ Ödeme doğrulandı! Hesabınız açıldı.</span>';
+                    applyUserSession(data.user, data.token);
+                    setTimeout(() => {
+                        closeLoginModal();
+                        if (currentChannelID) playChannel(currentChannelID);
+                    }, 700);
+                }
+            } catch (_) {
+                box.innerText = '❌ Ağ doğrulaması sırasında hata oluştu.';
+            }
+        }
+
+        async function logoutUser() {
+            try {
+                await fetch('/api/auth/logout', { method: 'POST', credentials: 'include', headers: authHeaders() });
+            } catch (_) {}
+            token = '';
+            applyUserSession(null, '');
+            closeLoginModal();
+            if (currentChannelID) playChannel(currentChannelID);
+        }
+
+        async function toggleFavorite(chId, evt) {
+            if (evt) evt.stopPropagation();
+            if (!currentUser || !currentUser.user_id) {
+                openLoginModal('register', '⭐ Favori listesi oluşturmak için ücretsiz veya ücretli hesap açın / giriş yapın.');
+                return;
+            }
+            try {
+                const res = await fetch('/api/user/favorites/toggle', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ channel_id: chId })
+                });
+                if (res.status === 401) {
+                    openLoginModal('login', 'Oturumunuz sona erdi, lütfen tekrar giriş yapın.');
+                    return;
+                }
+                if (res.ok) {
+                    const data = await res.json();
+                    userFavorites = new Set(Array.isArray(data.favorites) ? data.favorites : []);
+                    updateUserBadge();
+                    renderChannelList();
+                }
+            } catch (_) {}
+        }
+
+        function setChannelFilter(filter) {
+            if (filter === 'favorites' && (!currentUser || !currentUser.user_id)) {
+                openLoginModal('register', '🔒 Favori listenize erişmek için ücretsiz veya ücretli hesap oluşturup giriş yapmalısınız.');
+                return;
+            }
+            channelFilter = filter;
+            document.querySelectorAll('#sidebarFilterChips .f-chip').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === filter);
+            });
+            renderChannelList();
+        }
+
+        const h265Supported = typeof MediaSource !== 'undefined' &&
+            (MediaSource.isTypeSupported('video/mp4; codecs="hvc1.1.6.L93.B0"') ||
+             MediaSource.isTypeSupported('video/mp4; codecs="hev1.1.6.L93.B0"'));
+
+        document.getElementById('h265Support').innerText = h265Supported ? 'Donanımsal ✔' : 'H.264 Fallback';
+
+        function showOverlay(title, msg, showAuthBtn) {
+            document.getElementById('overlayTitle').innerText = title;
+            document.getElementById('overlayMsg').innerText = msg;
+            document.getElementById('overlayBtn').style.display = showAuthBtn ? 'inline-block' : 'none';
+            document.getElementById('videoOverlay').style.display = 'flex';
+        }
+
+        function hideOverlay() {
+            document.getElementById('videoOverlay').style.display = 'none';
+        }
+
+        async function loadEpgData() {
+            try {
+                const res = await fetch('/api/epg/json');
+                epgGuideData = await res.json();
+                updateEpgDisplay();
+            } catch (e) {}
+        }
+
+        async function loadChannels() {
+            try {
+                const res = await fetch('/api/channels');
+                const data = await res.json();
+                activeChannels = Array.isArray(data) ? data : [];
+
+                if (activeChannels.length > 0) {
+                    if (!currentChannelID || !activeChannels.some(c => c.id === currentChannelID)) {
+                        currentChannelID = activeChannels[0].id;
+                    }
+                    renderChannelList();
+                    playChannel(currentChannelID);
+                } else {
+                    document.getElementById('currentChannelName').innerText = 'Kayıtlı Kanal Yok';
+                    showOverlay('Kanal Bulunamadı', 'Admin panelinden M3U yükleyin veya tekil kanal ekleyin.', false);
+                }
+            } catch (e) {
+                showOverlay('Bağlantı Hatası', 'Kanal listesi sunucudan alınamadı.', false);
+            }
+        }
+
+        async function refreshViewerCounts() {
+            try {
+                const res = await fetch('/api/channels/viewers');
+                if (!res.ok) return;
+                const map = await res.json();
+                let changed = false;
+                activeChannels.forEach(ch => {
+                    const nextCnt = Number(map[ch.id] || 0);
+                    if ((ch.viewer_count || 0) !== nextCnt) {
+                        ch.viewer_count = nextCnt;
+                        changed = true;
+                    }
+                });
+                const cur = activeChannels.find(c => c.id === currentChannelID);
+                if (cur) {
+                    document.getElementById('activeChannelViewers').innerText = `${cur.viewer_count || 0} kişi`;
+                }
+                if (changed) {
+                    renderChannelList();
+                }
+            } catch (_) {}
+        }
+
+        function sendHeartbeat(chId, action = 'ping') {
+            if (!chId) return;
+            fetch('/api/channels/heartbeat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ channel_id: chId, viewer_id: viewerTabId, action }),
+                keepalive: action === 'leave'
+            }).then(r => r.ok ? r.json() : null).then(d => {
+                if (d && chId === currentChannelID && typeof d.viewer_count === 'number') {
+                    document.getElementById('activeChannelViewers').innerText = `${d.viewer_count} kişi`;
+                }
+            }).catch(() => {});
+        }
+
+        function getFilteredAndSortedChannels() {
+            const query = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+            const sortBy = document.getElementById('sortSelect').value;
+
+            const filtered = activeChannels.filter(ch => {
+                if (channelFilter === 'favorites' && !userFavorites.has(ch.id)) return false;
+                if (channelFilter === 'free' && ch.tier === 'paid') return false;
+                if (channelFilter === 'paid' && ch.tier !== 'paid') return false;
+                if (channelFilter === 'acestream' && !ch.is_acestream) return false;
+                if (!query) return true;
+                const nameMatch = (ch.name || '').toLowerCase().includes(query);
+                const idMatch = (ch.id || '').toLowerCase().includes(query);
+                let progMatch = false;
+                if (epgGuideData && epgGuideData[ch.id] && epgGuideData[ch.id].current) {
+                    progMatch = (epgGuideData[ch.id].current.title || '').toLowerCase().includes(query);
+                }
+                return nameMatch || idMatch || progMatch;
+            });
+
+            filtered.sort((a, b) => {
+                const va = a.viewer_count || 0;
+                const vb = b.viewer_count || 0;
+                switch (sortBy) {
+                    case 'viewers_desc':
+                        return vb !== va ? vb - va : a.name.localeCompare(b.name, 'tr');
+                    case 'viewers_asc':
+                        return va !== vb ? va - vb : a.name.localeCompare(b.name, 'tr');
+                    case 'name_desc':
+                        return b.name.localeCompare(a.name, 'tr');
+                    case 'fav_first': {
+                        const fa = userFavorites.has(a.id) ? 1 : 0;
+                        const fb = userFavorites.has(b.id) ? 1 : 0;
+                        if (fb !== fa) return fb - fa;
+                        return vb !== va ? vb - va : a.name.localeCompare(b.name, 'tr');
+                    }
+                    case 'free_first': {
+                        const ta = a.tier === 'paid' ? 1 : 0;
+                        const tb = b.tier === 'paid' ? 1 : 0;
+                        return ta !== tb ? ta - tb : a.name.localeCompare(b.name, 'tr');
+                    }
+                    case 'paid_first': {
+                        const ta = a.tier === 'paid' ? 0 : 1;
+                        const tb = b.tier === 'paid' ? 0 : 1;
+                        return ta !== tb ? ta - tb : a.name.localeCompare(b.name, 'tr');
+                    }
+                    case 'name_asc':
+                    default:
+                        return a.name.localeCompare(b.name, 'tr');
+                }
+            });
+            return filtered;
+        }
+
+        function renderChannelList() {
+            const channels = getFilteredAndSortedChannels();
+            const listElem = document.getElementById('channelList');
+            listElem.innerHTML = '';
+
+            if (channels.length === 0) {
+                listElem.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted); font-size:0.84rem;">Eşleşen kanal bulunamadı.</div>';
+                return;
+            }
+
+            const isLoggedIn = !!(currentUser && currentUser.user_id);
+
+            channels.forEach(ch => {
+                const isActive = ch.id === currentChannelID;
+                const isFav = isLoggedIn && userFavorites.has(ch.id);
+                const badgeClass = ch.tier === 'paid' ? 'badge-paid' : 'badge-free';
+                const badgeText = ch.tier === 'paid' ? 'PAID' : 'FREE';
+
+                let nowPlayingText = ch.id;
+                if (epgGuideData && epgGuideData[ch.id] && epgGuideData[ch.id].current) {
+                    nowPlayingText = `Şu an: ${epgGuideData[ch.id].current.title}`;
+                }
+
+                const item = document.createElement('div');
+                item.className = `channel-item ${isActive ? 'active' : ''}`;
+                item.onclick = () => {
+                    if (currentChannelID && currentChannelID !== ch.id) {
+                        sendHeartbeat(currentChannelID, 'leave');
+                    }
+                    currentChannelID = ch.id;
+                    renderChannelList();
+                    playChannel(ch.id);
+                };
+
+                const starBtn = document.createElement('button');
+                starBtn.type = 'button';
+                starBtn.className = `fav-star-btn ${isFav ? 'starred' : ''} ${!isLoggedIn ? 'locked' : ''}`;
+                starBtn.title = isLoggedIn ? (isFav ? 'Favorilerden çıkar' : 'Favorilere ekle') : 'Favoriler için giriş yapın';
+                starBtn.innerText = isFav ? '★' : '☆';
+                starBtn.onclick = (e) => toggleFavorite(ch.id, e);
+
+                const aceTag = ch.is_acestream ? '<span class="badge" style="background:rgba(124,58,237,0.25); color:#c4b5fd; border:1px solid #8b5cf6;">ACE</span>' : '';
+                const vBadge = `<span class="badge badge-viewers" title="Anlık İzleyici">👁 ${ch.viewer_count || 0}</span>`;
+
+                item.appendChild(starBtn);
+                const body = document.createElement('div');
+                body.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:6px; flex:1; min-width:0;';
+                body.innerHTML = `
+                    <div class="channel-info">
+                        <div class="channel-name">${escapeHtml(ch.name)}</div>
+                        <div class="channel-nowplaying">${escapeHtml(nowPlayingText)}</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:4px; flex-shrink:0;">
+                        ${vBadge}${aceTag}<span class="badge ${badgeClass}">${badgeText}</span>
+                    </div>
+                `;
+                item.appendChild(body);
+                listElem.appendChild(item);
+            });
+        }
+
+        function updateEpgDisplay() {
+            renderChannelList();
+            const guide = epgGuideData[currentChannelID];
+            if (guide && guide.current) {
+                document.getElementById('currShowTime').innerText = `Şu an: ${guide.current.start} - ${guide.current.stop}`;
+                document.getElementById('currShowTitle').innerText = guide.current.title;
+                document.getElementById('currShowDesc').innerText = guide.current.description || 'Açıklama yok.';
+            } else {
+                document.getElementById('currShowTime').innerText = 'Şu an: Bilgi Yok';
+                document.getElementById('currShowTitle').innerText = 'Yayın akışı bulunamadı';
+                document.getElementById('currShowDesc').innerText = 'Admin panelinden EPG eşlemesi yapabilirsiniz.';
+            }
+
+            if (guide && guide.next) {
+                document.getElementById('nextShowTime').innerText = `Sonraki: ${guide.next.start} - ${guide.next.stop}`;
+                document.getElementById('nextShowTitle').innerText = guide.next.title;
+                document.getElementById('nextShowDesc').innerText = guide.next.description || '';
+            } else {
+                document.getElementById('nextShowTime').innerText = 'Sonraki: --:--';
+                document.getElementById('nextShowTitle').innerText = '--';
+                document.getElementById('nextShowDesc').innerText = '';
+            }
+        }
+
+        const video = document.getElementById('videoPlayer');
+        let activeBlobUrl = null;
+
+        function stopCurrentPlayback() {
+            if (hlsInstance) {
+                hlsInstance.destroy();
+                hlsInstance = null;
+            }
+            if (msePollTimer) {
+                clearInterval(msePollTimer);
+                msePollTimer = null;
+            }
+            activeMediaSource = null;
+            video.removeAttribute('src');
+            video.load();
+            if (activeBlobUrl) {
+                URL.revokeObjectURL(activeBlobUrl);
+                activeBlobUrl = null;
+            }
+        }
+
+        async function playChannel(chId) {
+            const ch = activeChannels.find(c => c.id === chId);
+            if (!ch) return;
+
+            hideOverlay();
+            stopCurrentPlayback();
+            fragCount = 0;
+            document.getElementById('chunkSeq').innerText = '#0';
+            document.getElementById('currentChannelName').innerText = ch.name;
+            document.getElementById('currentChannelTier').innerText = `Canlı Yayın | ${(ch.tier || 'free').toUpperCase()} TIER${ch.is_acestream ? ' | ACESTREAM P2P' : ''}`;
+            document.getElementById('activeChannelViewers').innerText = `${ch.viewer_count || 0} kişi`;
+
+            sendHeartbeat(chId, 'join');
+            if (heartbeatTimer) clearInterval(heartbeatTimer);
+            heartbeatTimer = setInterval(() => sendHeartbeat(currentChannelID, 'ping'), 12000);
+
+            if (ch.is_acestream) {
+                showOverlay('AceStream P2P Bağlanıyor...', 'AceStream motoru yayını başlatıyor ve tarayıcı için dönüştürüyor...', false);
+            }
+
+            updateEpgDisplay();
+            connectP2PEngine(chId);
+
+            const proxyUrl = `/api/stream/${encodeURIComponent(chId)}/master.m3u8?token=${encodeURIComponent(token)}&vid=${encodeURIComponent(viewerTabId)}`;
+
+            try {
+                const probeStart = performance.now();
+                const headCheck = await fetch(proxyUrl);
+                document.getElementById('latencyVal').innerText = Math.round(performance.now() - probeStart) + ' ms';
+
+                if (headCheck.status === 403) {
+                    showOverlay('Ücretli Kanal (Abonelik Gerekli)', 'Bu kanalı izlemek için giriş yapın veya USDT ile ücretli paket satın alın.', true);
+                    return;
+                }
+
+                const contentType = (headCheck.headers.get('content-type') || '').toLowerCase();
+                if (headCheck.ok && (contentType.includes('mpegurl') || contentType.includes('text'))) {
+                    document.getElementById('transportMode').innerText = ch.is_acestream ? 'AceStream HLS + P2P' : 'HLS + WebRTC P2P';
+                    if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+                        const hlsCfg = { lowLatencyMode: true };
+                        if (p2pEngine && Hls.DefaultConfig && Hls.DefaultConfig.loader) {
+                            hlsCfg.fLoader = p2pEngine.createHlsLoaderClass(Hls.DefaultConfig.loader);
+                        }
+                        hlsInstance = new Hls(hlsCfg);
+                        hlsInstance.loadSource(proxyUrl);
+                        hlsInstance.attachMedia(video);
+                        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+                            hideOverlay();
+                            video.play().catch(() => {});
+                        });
+                        hlsInstance.on(Hls.Events.FRAG_LOADED, (evt, data) => {
+                            hideOverlay();
+                            fragCount++;
+                            document.getElementById('chunkSeq').innerText = `#${fragCount}`;
+                            if (data && data.frag && data.frag.stats && data.frag.stats.loading) {
+                                const ms = Math.round(data.frag.stats.loading.end - data.frag.stats.loading.start);
+                                if (ms >= 0) document.getElementById('latencyVal').innerText = ms + ' ms';
+                            }
+                        });
+                        hlsInstance.on(Hls.Events.ERROR, (evt, data) => {
+                            if (data && data.fatal) {
+                                startMSEFallback(chId, !!ch.is_acestream);
+                            }
+                        });
+                        return;
+                    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                        video.src = proxyUrl;
+                        hideOverlay();
+                        video.play().catch(() => {});
+                        return;
+                    }
+                }
+            } catch (e) {}
+
+            startMSEFallback(chId, !!ch.is_acestream);
+        }
+
+        function startMSEFallback(chId, isAceStream) {
+            if (typeof MediaSource === 'undefined') {
+                showOverlay('Oynatılamıyor', 'Tarayıcınız MediaSource oynatmayı desteklemiyor.', false);
+                return;
+            }
+            stopCurrentPlayback();
+            document.getElementById('transportMode').innerText = isAceStream ? 'AceStream → fMP4 Dönüştürücü' : 'On-Demand fMP4 Chunker';
+            showOverlay(
+                isAceStream ? 'AceStream P2P Bağlanıyor...' : 'Yayın Hazırlanıyor...',
+                isAceStream
+                    ? 'Motor P2P eşlerini bulup FFmpeg ile tarayıcı uyumlu fMP4 formatına dönüştürüyor (5–20 sn sürebilir).'
+                    : 'FFmpeg akışı başlatılıyor...',
+                false
+            );
+
+            const ms = new MediaSource();
+            activeMediaSource = ms;
+            activeBlobUrl = URL.createObjectURL(ms);
+            video.src = activeBlobUrl;
+
+            video.onerror = () => {
+                if (currentChannelID !== chId || activeMediaSource !== ms) return;
+                const err = video.error;
+                const msg = err ? `Video oynatma hatası (Kod ${err.code}: ${err.message || 'Decode/Codec'})` : 'Video oynatma hatası';
+                showOverlay('Oynatma Hatası', msg, false);
+            };
+
+            ms.addEventListener('sourceopen', () => {
+                if (activeMediaSource !== ms) return;
+
+                let sb = null;
+                let initLoaded = false;
+                let seq = 0;
+                let inFlight = false;
+                const startTs = Date.now();
+
+                const createSourceBufferForCodec = (serverCodec) => {
+                    const candidates = serverCodec === 'HEVC'
+                        ? [
+                            'video/mp4; codecs="hvc1.1.6.L93.B0, mp4a.40.2"',
+                            'video/mp4; codecs="hev1.1.6.L93.B0, mp4a.40.2"'
+                          ]
+                        : [
+                            'video/mp4; codecs="avc1.4d401f, mp4a.40.2"',
+                            'video/mp4; codecs="avc1.64001f, mp4a.40.2"',
+                            'video/mp4; codecs="avc1.42E01E, mp4a.40.2"'
+                          ];
+                    for (const mime of candidates) {
+                        if (MediaSource.isTypeSupported(mime)) {
+                            try { return ms.addSourceBuffer(mime); } catch (_) {}
+                        }
+                    }
+                    return null;
+                };
+
+                const attachSBListeners = (sourceBuf) => {
+                    sourceBuf.addEventListener('error', (e) => {
+                        console.error('[PLAYER SB ERROR]', e);
+                    });
+                    sourceBuf.addEventListener('updateend', () => {
+                        if (currentChannelID !== chId || activeMediaSource !== ms) return;
+                        try {
+                            if (sourceBuf.buffered.length > 0) {
+                                const bufStart = sourceBuf.buffered.start(0);
+                                const bufEnd = sourceBuf.buffered.end(sourceBuf.buffered.length - 1);
+                                if (video.currentTime < bufStart || (bufEnd - video.currentTime > 8)) {
+                                    video.currentTime = Math.max(bufStart, bufEnd - 1.2);
+                                }
+                                if (video.paused) {
+                                    video.play().catch(() => {});
+                                }
+                            }
+                        } catch (_) {}
+                    });
+                };
+
+                msePollTimer = setInterval(async () => {
+                    if (inFlight || currentChannelID !== chId || activeMediaSource !== ms || ms.readyState !== 'open' || (sb && sb.updating)) return;
+                    inFlight = true;
+                    try {
+                        if (!initLoaded) {
+                            const elapsedSec = Math.floor((Date.now() - startTs) / 1000);
+                            const initRes = await fetch(`/live/${encodeURIComponent(chId)}/init.mp4?token=${encodeURIComponent(token)}&vid=${encodeURIComponent(viewerTabId)}`);
+                            if (initRes.status === 403) {
+                                clearInterval(msePollTimer);
+                                showOverlay('Ücretli Kanal (Abonelik Gerekli)', 'Bu kanalı izlemek için giriş yapın veya USDT ile ücretli paket alın.', true);
+                                return;
+                            }
+                            if (initRes.status === 202 || !initRes.ok) {
+                                if (elapsedSec > 45) {
+                                    showOverlay(
+                                        'Yayın Zaman Aşımı',
+                                        isAceStream
+                                            ? 'AceStream motoru P2P eşlerinden veri alamadı veya ace_engine.exe çalışmıyor.'
+                                            : 'FFmpeg kaynak akışı başlatılamadı.',
+                                        false
+                                    );
+                                } else {
+                                    document.getElementById('overlayMsg').innerText = isAceStream
+                                        ? `AceStream P2P eşlerine bağlanıyor & dönüştürülüyor... (${elapsedSec} sn)`
+                                        : `Yayın segmenti hazırlanıyor... (${elapsedSec} sn)`;
+                                }
+                                return;
+                            }
+                            const serverCodec = (initRes.headers.get('X-Chunk-Codec') || 'AVC').toUpperCase();
+                            const initBuf = await initRes.arrayBuffer();
+                            if (!sb) {
+                                sb = createSourceBufferForCodec(serverCodec);
+                                if (!sb) {
+                                    if (serverCodec === 'HEVC' && elapsedSec < 12) return;
+                                    clearInterval(msePollTimer);
+                                    showOverlay('Codec Hatası', `Tarayıcı ${serverCodec} video kodeğini MSE üzerinde desteklemiyor.`, false);
+                                    return;
+                                }
+                                attachSBListeners(sb);
+                            }
+                            sb.appendBuffer(initBuf);
+                            initLoaded = true;
+                            hideOverlay();
+                            return;
+                        }
+
+                        if (sb.buffered.length > 0 && video.currentTime - sb.buffered.start(0) > 30) {
+                            sb.remove(sb.buffered.start(0), video.currentTime - 15);
+                            return;
+                        }
+
+                        const t0 = performance.now();
+                        const chunkKey = seq > 0 ? `fmp4:${chId}:${seq}` : '';
+                        if (chunkKey && p2pEngine && p2pEngine.channelId === chId) {
+                            const p2pBuf = await p2pEngine.tryFetchFromPeers(chunkKey, '');
+                            if (p2pBuf && p2pBuf.byteLength > 0) {
+                                if (!sb.updating && ms.readyState === 'open') {
+                                    sb.appendBuffer(p2pBuf);
+                                    document.getElementById('chunkSeq').innerText = `#${seq} (P2P)`;
+                                    document.getElementById('latencyVal').innerText = Math.round(performance.now() - t0) + ' ms';
+                                    seq++;
+                                }
+                                return;
+                            }
+                        }
+
+                        const url = seq === 0
+                            ? `/live/${encodeURIComponent(chId)}/latest?token=${encodeURIComponent(token)}&vid=${encodeURIComponent(viewerTabId)}`
+                            : `/live/${encodeURIComponent(chId)}/chunk/${seq}?token=${encodeURIComponent(token)}&vid=${encodeURIComponent(viewerTabId)}`;
+
+                        const res = await fetch(url);
+                        if (res.status === 204) return;
+                        if (res.status === 404 || res.status === 410) {
+                            seq = 0;
+                            return;
+                        }
+                        if (res.ok) {
+                            const buf = await res.arrayBuffer();
+                            const hdrSeq = parseInt(res.headers.get('X-Chunk-Seq') || '0', 10);
+                            const hdrHash = res.headers.get('X-Chunk-Checksum') || '';
+                            if (p2pEngine && p2pEngine.channelId === chId && hdrSeq > 0) {
+                                p2pEngine.recordHttpDownload(`fmp4:${chId}:${hdrSeq}`, buf, hdrHash);
+                            }
+                            if (hdrSeq > 0) seq = hdrSeq + 1;
+                            else if (seq > 0) seq++;
+
+                            if (!sb.updating && ms.readyState === 'open') {
+                                sb.appendBuffer(buf);
+                                document.getElementById('chunkSeq').innerText = `#${hdrSeq || seq}`;
+                                document.getElementById('latencyVal').innerText = Math.round(performance.now() - t0) + ' ms';
+                            }
+                        }
+                    } catch (err) {
+                        if (err && err.name === 'QuotaExceededError' && sb && sb.buffered.length > 0 && !sb.updating) {
+                            try { sb.remove(sb.buffered.start(0), Math.max(sb.buffered.start(0) + 5, video.currentTime - 5)); } catch (_) {}
+                        }
+                    } finally {
+                        inFlight = false;
+                    }
+                }, 400);
+            });
+        }
+
+        function formatBytesShort(bytes) {
+            if (!bytes || bytes < 1024) return `${Math.round(bytes || 0)} B`;
+            if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+            return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+        }
+
+        function changeUploadProfile(val) {
+            if (typeof getIPTVUploadQuota === 'function') {
+                getIPTVUploadQuota().setLimitProfile(val);
+            }
+        }
+
+        function connectP2PEngine(chId) {
+            if (p2pEngine) {
+                p2pEngine.destroy();
+                p2pEngine = null;
+            }
+            if (typeof IPTVP2PEngine === 'undefined') return;
+
+            p2pEngine = new IPTVP2PEngine({
+                channelId: chId,
+                getToken: () => token,
+                maxPeers: 8,
+                onStatus: (st) => {
+                    if (!st.authorized) {
+                        document.getElementById('p2pStatus').innerHTML = '<span style="color: var(--danger)">Yetkisiz</span>';
+                        document.getElementById('p2pPillStatus').innerText = 'Yetkisiz';
+                        return;
+                    }
+                    if (!st.wsConnected) {
+                        document.getElementById('p2pStatus').innerHTML = '<span style="color: var(--warning)">HTTP Proxy</span>';
+                        document.getElementById('p2pPillStatus').innerText = 'HTTP Proxy';
+                    } else if (st.p2pPeers > 0) {
+                        document.getElementById('p2pStatus').innerHTML = `<span style="color: var(--success)">WebRTC P2P (${st.p2pPeers} Eş)</span>`;
+                        document.getElementById('p2pPillStatus').innerText = `P2P (${st.p2pPeers} WebRTC / ${st.totalPeers} Swarm)`;
+                    } else {
+                        document.getElementById('p2pStatus').innerHTML = '<span style="color: var(--success)">Swarm Bağlı</span>';
+                        document.getElementById('p2pPillStatus').innerText = `${st.totalPeers} Peer Aktif`;
+                    }
+                },
+                onStats: (s) => {
+                    document.getElementById('swarmPeersVal').innerText = `${s.totalSwarmPeers} Peer (${s.openP2PPeers} WebRTC)`;
+                    if (s.openP2PPeers > 0) {
+                        document.getElementById('p2pStatus').innerHTML = `<span style="color: var(--success)">WebRTC P2P (${s.openP2PPeers} Eş)</span>`;
+                        document.getElementById('p2pPillStatus').innerText = `P2P %${s.offloadPct} (${s.openP2PPeers} WebRTC)`;
+                    } else {
+                        document.getElementById('p2pPillStatus').innerText = `${s.totalSwarmPeers} Peer Aktif`;
+                    }
+                    document.getElementById('p2pOffloadVal').innerText = `%${s.offloadPct} (${formatBytesShort(s.p2pBytesIn)} P2P)`;
+                    const q = s.quota;
+                    document.getElementById('uploadFreeVal').innerText = `${(q.freeRateBps / 1024).toFixed(1)}/${(q.freeLimitBps / 1024).toFixed(0)} KB/s (${formatBytesShort(q.outFreeBytes)})`;
+                    document.getElementById('uploadPaidVal').innerText = `${(q.paidRateBps / 1024).toFixed(1)}/${(q.paidLimitBps / 1024).toFixed(0)} KB/s (${formatBytesShort(q.outPaidBytes)})`;
+                }
+            });
+        }
+
+        document.getElementById('searchInput').addEventListener('input', () => renderChannelList());
+        window.addEventListener('beforeunload', () => {
+            if (currentChannelID) sendHeartbeat(currentChannelID, 'leave');
+        });
+
+        (async () => {
+            await loadSessionAndPlans();
+            await loadChannels();
+            loadEpgData();
+            setInterval(loadEpgData, 30000);
+            setInterval(refreshViewerCounts, 8000);
+        })();
+    </script>
+</body>
+</html>
