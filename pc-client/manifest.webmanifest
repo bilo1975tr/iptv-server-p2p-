@@ -1,0 +1,10 @@
+{
+  "name": "IPTV Cinema P2P — Masaüstü İstemcisi",
+  "short_name": "IPTV PC",
+  "description": "WebRTC P2P ve 24 saatlik DVR EPG senkronlu masaüstü IPTV oynatıcı",
+  "start_url": "/pc/",
+  "scope": "/pc/",
+  "display": "standalone",
+  "background_color": "#0b0f17",
+  "theme_color": "#0b0f17"
+}

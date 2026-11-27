@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 
 	"iptv-p2p-server/internal/auth"
+	"iptv-p2p-server/internal/mesh"
 	"iptv-p2p-server/pkg/protocol"
 
 	"github.com/gorilla/websocket"
@@ -38,6 +39,7 @@ type PeerClient struct {
 	UserTier        string
 	IP              string
 	IsIPv6          bool
+	IsTailscale     bool
 	BinaryZstd      bool
 	Conn            *websocket.Conn
 	P2PBytesIn      int64
@@ -155,15 +157,17 @@ func (st *SwarmTracker) HandleWebSocket(w http.ResponseWriter, r *http.Request) 
 
 	remoteAddr := r.RemoteAddr
 	isIPv6 := len(remoteAddr) > 0 && remoteAddr[0] == '['
+	isTailscale := mesh.IsTailscaleIP(remoteAddr)
 
 	peer := &PeerClient{
-		ID:         peerID,
-		ChannelID:  channelID,
-		UserTier:   claims.Tier,
-		IP:         remoteAddr,
-		IsIPv6:     isIPv6,
-		BinaryZstd: useZstd,
-		Conn:       conn,
+		ID:          peerID,
+		ChannelID:   channelID,
+		UserTier:    claims.Tier,
+		IP:          remoteAddr,
+		IsIPv6:      isIPv6,
+		IsTailscale: isTailscale,
+		BinaryZstd:  useZstd,
+		Conn:        conn,
 	}
 
 	st.registerPeer(peer)
@@ -172,7 +176,7 @@ func (st *SwarmTracker) HandleWebSocket(w http.ResponseWriter, r *http.Request) 
 		st.broadcastPeerListToChannel(peer.ChannelID)
 	}()
 
-	log.Printf("[TRACKER] Peer %s joined swarm for channel %s (Tier: %s, IPv6: %v)", peerID, channelID, claims.Tier, isIPv6)
+	log.Printf("[TRACKER] Peer %s joined swarm for channel %s (Tier: %s, IPv6: %v, Tailscale: %v)", peerID, channelID, claims.Tier, isIPv6, isTailscale)
 
 	// Send peer its assigned ID + server-verified tier, then notify all swarm members
 	_ = peer.SendMessage(&protocol.P2PMessage{
@@ -261,9 +265,10 @@ func (st *SwarmTracker) broadcastPeerListToChannel(channelID string) {
 	for _, p := range swarm {
 		peers = append(peers, p)
 		allInfos = append(allInfos, protocol.PeerInfo{
-			ID:     p.ID,
-			Tier:   p.UserTier,
-			IsIPv6: p.IsIPv6,
+			ID:          p.ID,
+			Tier:        p.UserTier,
+			IsIPv6:      p.IsIPv6,
+			IsTailscale: p.IsTailscale,
 		})
 	}
 	st.mu.RUnlock()
@@ -317,10 +322,14 @@ func (st *SwarmTracker) GetSwarmStats() map[string]map[string]int {
 	for chID, swarm := range st.swarms {
 		total := len(swarm)
 		ipv6Count := 0
+		tsCount := 0
 		var p2pIn, httpIn, outFree, outPaid int64
 		for _, peer := range swarm {
 			if peer.IsIPv6 {
 				ipv6Count++
+			}
+			if peer.IsTailscale {
+				tsCount++
 			}
 			peer.mu.Lock()
 			p2pIn += peer.P2PBytesIn
@@ -333,6 +342,7 @@ func (st *SwarmTracker) GetSwarmStats() map[string]map[string]int {
 			"total_peers":     total,
 			"ipv6_peers":      ipv6Count,
 			"ipv4_peers":      total - ipv6Count,
+			"tailscale_peers": tsCount,
 			"p2p_kb_in":       int(p2pIn / 1024),
 			"http_kb_in":      int(httpIn / 1024),
 			"p2p_out_free_kb": int(outFree / 1024),

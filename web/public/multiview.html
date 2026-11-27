@@ -516,10 +516,32 @@
                     const ct = (headCheck.headers.get('content-type') || '').toLowerCase();
                     if (headCheck.ok && (ct.includes('mpegurl') || ct.includes('text'))) {
                         if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-                            const hlsCfg = { lowLatencyMode: true };
+                            const hlsCfg = {
+                                lowLatencyMode: false,
+                                liveSyncDurationCount: 4,
+                                liveMaxLatencyDurationCount: Infinity,
+                                maxLiveSyncPlaybackRate: 1,
+                                maxBufferLength: 45,
+                                maxMaxBufferLength: 90,
+                                backBufferLength: 60,
+                                maxBufferHole: 1.5,
+                                nudgeOffset: 0.2,
+                                nudgeMaxRetry: 8,
+                                fragLoadingTimeOut: 20000,
+                                fragLoadingMaxRetry: 6,
+                                fragLoadingRetryDelay: 500,
+                                manifestLoadingTimeOut: 15000,
+                                manifestLoadingMaxRetry: 6,
+                                levelLoadingTimeOut: 15000,
+                                levelLoadingMaxRetry: 6
+                            };
                             if (this.p2p && Hls.DefaultConfig && Hls.DefaultConfig.loader) {
+                                hlsCfg.pLoader = this.p2p.createHlsPlaylistLoaderClass(Hls.DefaultConfig.loader);
                                 hlsCfg.fLoader = this.p2p.createHlsLoaderClass(Hls.DefaultConfig.loader);
                             }
+                            let netRetries = 0;
+                            let mediaRecoveries = 0;
+                            let lastRecoverAt = 0;
                             this.hls = new Hls(hlsCfg);
                             this.hls.loadSource(proxyUrl);
                             this.hls.attachMedia(this.videoEl);
@@ -530,15 +552,31 @@
                                 this.videoEl.play().catch(() => {});
                             });
                             this.hls.on(Hls.Events.FRAG_LOADED, () => {
+                                netRetries = 0;
                                 if (this.p2p) {
                                     const peerCnt = this.p2p.getOpenPeerCount();
                                     if (peerCnt > 0) this.statusEl.innerText = `HLS+P2P (${peerCnt})`;
                                 }
                             });
                             this.hls.on(Hls.Events.ERROR, (evt, data) => {
-                                if (data && data.fatal) {
-                                    this.startMSE(chId, isAce);
+                                if (!data || !data.fatal) return;
+                                if (data.type === Hls.ErrorTypes.NETWORK_ERROR && netRetries < 4) {
+                                    netRetries++;
+                                    setTimeout(() => {
+                                        if (this.hls) this.hls.startLoad();
+                                    }, 1200);
+                                    return;
                                 }
+                                if (data.type === Hls.ErrorTypes.MEDIA_ERROR && mediaRecoveries < 3) {
+                                    const now = Date.now();
+                                    if (now - lastRecoverAt > 3000) {
+                                        mediaRecoveries++;
+                                        lastRecoverAt = now;
+                                        try { this.hls.recoverMediaError(); } catch (_) {}
+                                        return;
+                                    }
+                                }
+                                this.startMSE(chId, isAce);
                             });
                             return;
                         }
@@ -586,17 +624,21 @@
                     };
 
                     const attachSB = (sourceBuf) => {
+                        let initialStarted = false;
                         sourceBuf.addEventListener('updateend', () => {
                             if (this.channelId !== chId || this.ms !== ms) return;
                             try {
                                 if (sourceBuf.buffered.length > 0) {
                                     const bStart = sourceBuf.buffered.start(0);
                                     const bEnd = sourceBuf.buffered.end(sourceBuf.buffered.length - 1);
-                                    if (this.videoEl.currentTime < bStart || (bEnd - this.videoEl.currentTime > 8)) {
-                                        this.videoEl.currentTime = Math.max(bStart, bEnd - 1.2);
+                                    if (this.videoEl.currentTime < bStart) {
+                                        this.videoEl.currentTime = bStart;
                                     }
-                                    if (this.videoEl.paused) {
-                                        this.videoEl.play().catch(() => {});
+                                    if (!initialStarted && bEnd - bStart >= 0.5) {
+                                        initialStarted = true;
+                                        if (this.videoEl.paused) {
+                                            this.videoEl.play().catch(() => {});
+                                        }
                                     }
                                 }
                             } catch (_) {}

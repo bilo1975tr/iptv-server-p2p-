@@ -29,6 +29,59 @@ function readConfigDefaults() {
   return { adminUser, adminPass, jwtSecret };
 }
 
+function readTailscalePreviewStatus() {
+  const out = {
+    enabled: false,
+    connected: false,
+    backend_state: 'GoServerRequired',
+    auth_mode: 'none',
+    auth_configured: false,
+    hostname: 'iptv-p2p-node',
+    mesh_role: 'hybrid',
+    mesh_port: 8448,
+    discovery_tag: 'tag:iptv-mesh',
+    prefer_tailscale_ice: true,
+    bytes_pulled: 0,
+    bytes_served: 0,
+    peers: []
+  };
+  try {
+    const raw = fs.readFileSync(CONFIG_PATH, 'utf8');
+    const idx = raw.search(/^\s*tailscale:\s*$/m);
+    if (idx >= 0) {
+      const sec = raw.slice(idx);
+      const nextTop = sec.slice(sec.indexOf('\n') + 1).search(/^[a-zA-Z0-9_]+:/m);
+      const block = nextTop >= 0 ? sec.slice(0, sec.indexOf('\n') + 1 + nextTop) : sec;
+      const en = block.match(/^\s*enabled:\s*(true|false)/m);
+      const hn = block.match(/^\s*hostname:\s*"?([^"\r\n#]+)"?/m);
+      const role = block.match(/^\s*mesh_role:\s*"?([^"\r\n#]+)"?/m);
+      const port = block.match(/^\s*mesh_port:\s*(\d+)/m);
+      const tag = block.match(/^\s*discovery_tag:\s*"?([^"\r\n#]+)"?/m);
+      const pref = block.match(/^\s*prefer_tailscale_ice:\s*(true|false)/m);
+      const ak = block.match(/^\s*auth_key:\s*"?([^"\r\n#]*)"?/m);
+      const cs = block.match(/^\s*oauth_client_secret:\s*"?([^"\r\n#]*)"?/m);
+      if (en) out.enabled = en[1] === 'true';
+      if (hn && hn[1].trim()) out.hostname = hn[1].trim();
+      if (role && role[1].trim()) out.mesh_role = role[1].trim();
+      if (port) out.mesh_port = Number(port[1]) || 8448;
+      if (tag && tag[1].trim()) out.discovery_tag = tag[1].trim();
+      if (pref) out.prefer_tailscale_ice = pref[1] === 'true';
+      const hasAuthKey = Boolean((ak && ak[1].trim()) || (process.env.TS_AUTHKEY && process.env.TS_AUTHKEY.trim()));
+      const hasOAuth = Boolean((cs && cs[1].trim()) || (process.env.TS_CLIENT_SECRET && process.env.TS_CLIENT_SECRET.trim()));
+      out.auth_configured = hasAuthKey || hasOAuth;
+      out.auth_mode = hasOAuth ? 'oauth_client_secret' : (hasAuthKey ? 'static_auth_key' : (out.enabled ? 'persisted_state' : 'none'));
+    }
+  } catch {
+    // Use defaults
+  }
+  return out;
+}
+
+function isTailscaleAddress(rawAddr) {
+  const s = String(rawAddr || '').replace(/^::ffff:/i, '').trim();
+  return /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(s) || /^fd7a:115c:a1e0:/i.test(s);
+}
+
 function readStorage() {
   try {
     const raw = fs.readFileSync(STORAGE_PATH, 'utf8');
@@ -174,14 +227,14 @@ function sendJSON(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
-function serveFile(res, filePath, contentType) {
+function serveFile(res, filePath, contentType, extraHeaders) {
   fs.readFile(filePath, (err, content) => {
     if (err) {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('Not Found');
       return;
     }
-    res.writeHead(200, { 'Content-Type': contentType });
+    res.writeHead(200, Object.assign({ 'Content-Type': contentType }, extraHeaders || {}));
     res.end(content);
   });
 }
@@ -227,6 +280,35 @@ const server = http.createServer(async (req, res) => {
   }
   if (pathname === '/admin/' || pathname === '/admin/index.html') {
     return serveFile(res, path.join(__dirname, 'web', 'admin', 'index.html'), 'text/html; charset=utf-8');
+  }
+  if (pathname === '/pc' || pathname === '/tv') {
+    const qs = urlObj.search || '';
+    res.writeHead(302, { Location: pathname + '/' + qs });
+    return res.end();
+  }
+  if (pathname.startsWith('/pc/') || pathname.startsWith('/tv/')) {
+    const isPc = pathname.startsWith('/pc/');
+    const baseDir = path.resolve(__dirname, isPc ? 'pc-client' : 'tv-client');
+    const rel = pathname.slice(4) || 'index.html';
+    const targetPath = path.resolve(baseDir, rel);
+    if (!targetPath.startsWith(baseDir + path.sep) && targetPath !== baseDir) {
+      res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('Forbidden');
+    }
+    const ext = path.extname(targetPath).toLowerCase();
+    const mimeMap = {
+      '.html': 'text/html; charset=utf-8',
+      '.js': 'application/javascript; charset=utf-8',
+      '.css': 'text/css; charset=utf-8',
+      '.webmanifest': 'application/manifest+json; charset=utf-8',
+      '.json': 'application/json; charset=utf-8',
+      '.svg': 'image/svg+xml',
+      '.png': 'image/png'
+    };
+    return serveFile(res, targetPath, mimeMap[ext] || 'application/octet-stream', {
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Pragma': 'no-cache'
+    });
   }
 
   if (pathname === '/api/channels') {
@@ -348,6 +430,16 @@ const server = http.createServer(async (req, res) => {
       const username = String(body.username || '').trim();
       const password = String(body.password || '');
       const st = readStorage();
+      if (username === adminUser && password === adminPass) {
+        const token = signToken({ user_id: username, tier: 'admin', sub: username, exp: Math.floor(Date.now() / 1000) + 30 * 86400 }, jwtSecret);
+        const admAcc = (st.users || {})[username];
+        setSessionCookie(res, req, token, 30 * 86400);
+        return sendJSON(res, 200, {
+          status: 'success',
+          token,
+          user: { user_id: username, tier: 'admin', favorites: (admAcc && admAcc.favorites) || [] }
+        });
+      }
       const key = Object.keys(st.users || {}).find((k) => k.toLowerCase() === username.toLowerCase());
       const acc = key ? st.users[key] : null;
       if (!acc || !verifyPasswordScrypt(acc.password_hash, password)) {
@@ -380,6 +472,14 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { authenticated: false, tier: 'guest', favorites: [] });
     }
     const st = readStorage();
+    if (claims.tier === 'admin') {
+      const admAcc = (st.users || {})[claims.user_id];
+      return sendJSON(res, 200, {
+        authenticated: true,
+        token: tok,
+        user: { user_id: claims.user_id, tier: 'admin', favorites: (admAcc && admAcc.favorites) || [] }
+      });
+    }
     const acc = (st.users || {})[claims.user_id];
     if (!acc) return sendJSON(res, 200, { authenticated: false, tier: 'guest', favorites: [] });
     return sendJSON(res, 200, {
@@ -455,8 +555,15 @@ const server = http.createServer(async (req, res) => {
       const body = JSON.parse(await readBody(req));
       const chId = String(body.channel_id || '').trim();
       const st = readStorage();
-      const acc = (st.users || {})[claims.user_id];
-      if (!acc) return sendJSON(res, 401, { error: 'Kullanıcı bulunamadı' });
+      st.users = st.users || {};
+      let acc = st.users[claims.user_id];
+      if (!acc) {
+        if (claims.tier === 'admin') {
+          acc = { user_id: claims.user_id, tier: 'admin', favorites: [] };
+        } else {
+          return sendJSON(res, 401, { error: 'Kullanıcı bulunamadı' });
+        }
+      }
       const favs = Array.isArray(acc.favorites) ? [...acc.favorites] : [];
       const idx = favs.indexOf(chId);
       let isFav = false;
@@ -642,6 +749,9 @@ const server = http.createServer(async (req, res) => {
         slots: []
       });
     }
+    if (pathname === '/api/admin/mesh/status') {
+      return sendJSON(res, 200, readTailscalePreviewStatus());
+    }
     return sendJSON(res, 501, { error: 'Full streaming/write operations require the Go server (go run cmd/server/main.go)' });
   }
 
@@ -687,7 +797,8 @@ function broadcastPreviewSwarm(chId) {
   const allInfos = Array.from(swarm.values()).map((p) => ({
     id: p.id,
     tier: p.tier,
-    is_ipv6: p.isIPv6
+    is_ipv6: p.isIPv6,
+    is_tailscale: Boolean(p.isTailscale)
   }));
   for (const recipient of swarm.values()) {
     const others = allInfos.filter((i) => i.id !== recipient.id);
@@ -707,12 +818,14 @@ function getPreviewSwarmStats() {
   const out = {};
   for (const [chId, swarm] of previewSwarms.entries()) {
     let ipv6 = 0;
+    let tailscale = 0;
     let p2pIn = 0;
     let httpIn = 0;
     let outFree = 0;
     let outPaid = 0;
     for (const p of swarm.values()) {
       if (p.isIPv6) ipv6++;
+      if (p.isTailscale) tailscale++;
       p2pIn += p.p2pBytesIn || 0;
       httpIn += p.httpBytesIn || 0;
       outFree += p.outFreeBytes || 0;
@@ -722,6 +835,7 @@ function getPreviewSwarmStats() {
       total_peers: swarm.size,
       ipv6_peers: ipv6,
       ipv4_peers: swarm.size - ipv6,
+      tailscale_peers: tailscale,
       p2p_kb_in: Math.floor(p2pIn / 1024),
       http_kb_in: Math.floor(httpIn / 1024),
       p2p_out_free_kb: Math.floor(outFree / 1024),
@@ -787,12 +901,14 @@ server.on('upgrade', (req, socket) => {
     return;
   }
 
+  const remoteAddr = String(req.socket.remoteAddress || '');
   const peerId = `peer_${previewPeerSeq++}_${crypto.randomBytes(3).toString('hex')}`;
   const peerObj = {
     id: peerId,
     channelId,
     tier: userTier,
-    isIPv6: String(req.socket.remoteAddress || '').includes(':'),
+    isIPv6: remoteAddr.includes(':'),
+    isTailscale: isTailscaleAddress(remoteAddr),
     socket,
     p2pBytesIn: 0,
     httpBytesIn: 0,

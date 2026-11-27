@@ -447,6 +447,35 @@ func (api *AdminAPI) handleUserLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	username := strings.TrimSpace(req.Username)
 
+	if api.authManager.CheckAdminCredentials(username, req.Password) {
+		tok, err := api.authManager.GenerateToken(username, auth.TierAdmin, 24*30)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Oturum oluşturulamadı"})
+			return
+		}
+		api.mu.RLock()
+		var favs []string
+		if acc, ok := api.users[username]; ok && len(acc.Favorites) > 0 {
+			favs = append([]string(nil), acc.Favorites...)
+		}
+		api.mu.RUnlock()
+		if favs == nil {
+			favs = []string{}
+		}
+		setUserSessionCookie(w, r, tok, 24*30*3600)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "success",
+			"token":  tok,
+			"user": PublicUserDTO{
+				UserID:    username,
+				Tier:      auth.TierAdmin,
+				Favorites: favs,
+			},
+		})
+		return
+	}
+
 	api.mu.Lock()
 	defer api.mu.Unlock()
 
@@ -538,13 +567,22 @@ func (api *AdminAPI) handleUserMe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if claims.Tier == auth.TierAdmin {
+		api.mu.RLock()
+		var favs []string
+		if acc, ok := api.users[claims.UserID]; ok && len(acc.Favorites) > 0 {
+			favs = append([]string(nil), acc.Favorites...)
+		}
+		api.mu.RUnlock()
+		if favs == nil {
+			favs = []string{}
+		}
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"authenticated": true,
 			"token":         tok,
 			"user": PublicUserDTO{
 				UserID:    claims.UserID,
 				Tier:      auth.TierAdmin,
-				Favorites: []string{},
+				Favorites: favs,
 			},
 		})
 		return
@@ -928,7 +966,7 @@ func (api *AdminAPI) handleUserFavorites(w http.ResponseWriter, r *http.Request)
 	api.mu.RLock()
 	acc, exists := api.users[claims.UserID]
 	api.mu.RUnlock()
-	if !exists {
+	if !exists && claims.Tier != auth.TierAdmin {
 		w.WriteHeader(http.StatusUnauthorized)
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Kullanıcı bulunamadı"})
 		return
@@ -974,9 +1012,18 @@ func (api *AdminAPI) handleToggleFavorite(w http.ResponseWriter, r *http.Request
 
 	acc, exists := api.users[claims.UserID]
 	if !exists {
-		w.WriteHeader(http.StatusUnauthorized)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Kayıtlı kullanıcı hesabı bulunamadı"})
-		return
+		if claims.Tier == auth.TierAdmin {
+			acc = storage.UserAccount{
+				UserID:    claims.UserID,
+				Tier:      auth.TierAdmin,
+				Favorites: []string{},
+				CreatedAt: time.Now().Format("2006-01-02 15:04:05"),
+			}
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Kayıtlı kullanıcı hesabı bulunamadı"})
+			return
+		}
 	}
 	if _, chExists := api.streams[chID]; !chExists {
 		w.WriteHeader(http.StatusNotFound)

@@ -15,6 +15,7 @@ import (
 	"iptv-p2p-server/internal/api"
 	"iptv-p2p-server/internal/auth"
 	"iptv-p2p-server/internal/epg"
+	"iptv-p2p-server/internal/mesh"
 	"iptv-p2p-server/internal/seeder"
 	"iptv-p2p-server/internal/storage"
 	"iptv-p2p-server/internal/tracker"
@@ -34,11 +35,18 @@ type Config struct {
 		AESMasterKey   string `yaml:"aes_master_key"`
 	} `yaml:"server"`
 	Transcoder struct {
-		EncoderType     string `yaml:"encoder_type"`
-		FallbackEncoder string `yaml:"fallback_encoder"`
-		GOPSeconds      int    `yaml:"gop_seconds"`
-		Preset          string `yaml:"preset"`
-		TargetFPS       int    `yaml:"target_fps"`
+		EncoderType       string `yaml:"encoder_type"`
+		FallbackEncoder   string `yaml:"fallback_encoder"`
+		SmoothnessProfile string `yaml:"smoothness_profile"`
+		PreserveSourceFPS *bool  `yaml:"preserve_source_fps"`
+		GOPSeconds        int    `yaml:"gop_seconds"`
+		HLSSegmentSeconds int    `yaml:"hls_segment_seconds"`
+		HLSListSize       int    `yaml:"hls_list_size"`
+		VideoBitrate      string `yaml:"video_bitrate"`
+		MaxRate           string `yaml:"max_rate"`
+		BufSize           string `yaml:"buf_size"`
+		Preset            string `yaml:"preset"`
+		TargetFPS         int    `yaml:"target_fps"`
 	} `yaml:"transcoder"`
 	Channels []struct {
 		ID        string `yaml:"id"`
@@ -47,6 +55,7 @@ type Config struct {
 		SourceURL string `yaml:"source_url"`
 	} `yaml:"channels"`
 	AceStream acestream.Config `yaml:"acestream"`
+	Tailscale mesh.Config      `yaml:"tailscale"`
 }
 
 func main() {
@@ -78,10 +87,14 @@ func main() {
 		cfg.Transcoder.TargetFPS = 30
 	}
 	if cfg.Transcoder.GOPSeconds <= 0 {
-		cfg.Transcoder.GOPSeconds = 1
+		cfg.Transcoder.GOPSeconds = 2
 	}
 	if cfg.Transcoder.FallbackEncoder == "" {
 		cfg.Transcoder.FallbackEncoder = "libx264"
+	}
+	preserveFPS := true
+	if cfg.Transcoder.PreserveSourceFPS != nil {
+		preserveFPS = *cfg.Transcoder.PreserveSourceFPS
 	}
 
 	// 2. Initialize Core Subsystems
@@ -100,10 +113,23 @@ func main() {
 		cfg.Transcoder.GOPSeconds,
 		cfg.Server.JWTSecret,
 	)
+	seedServer.SetTranscoderOptions(
+		cfg.Transcoder.SmoothnessProfile,
+		preserveFPS,
+		cfg.Transcoder.HLSSegmentSeconds,
+		cfg.Transcoder.HLSListSize,
+		cfg.Transcoder.VideoBitrate,
+		cfg.Transcoder.MaxRate,
+		cfg.Transcoder.BufSize,
+	)
 	swarmTracker.SetChannelTierResolver(seedServer.GetChannelTier)
 
 	aceManager := acestream.NewManager(cfg.AceStream)
 	seedServer.SetAceStreamManager(aceManager)
+
+	meshMgr := mesh.NewManager(cfg.Tailscale)
+	meshMgr.SetActiveChannelProvider(seedServer.GetActiveChannelIDs)
+	seedServer.SetMeshManager(meshMgr)
 
 	adminAPI := api.NewAdminAPI(authMgr, swarmTracker, api.StreamLifecycleHooks{
 		OnUpsert: func(id, tier string, sourceURLs []string) {
@@ -121,6 +147,7 @@ func main() {
 		RemoveViewer:   seedServer.RemoveViewer,
 	})
 	adminAPI.SetAceStreamManager(aceManager)
+	adminAPI.SetMeshManager(meshMgr)
 	adminAPI.StartBillingPoller()
 
 	if cfg.AceStream.Enabled {
@@ -169,16 +196,54 @@ func main() {
 
 	adminFS := http.FileServer(http.Dir("web/admin"))
 	publicFS := http.FileServer(http.Dir("web/public"))
+	pcClientFS := http.FileServer(http.Dir("pc-client"))
+	tvClientFS := http.FileServer(http.Dir("tv-client"))
+
+	noCacheStatic := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+			w.Header().Set("Pragma", "no-cache")
+			w.Header().Set("Expires", "0")
+			next.ServeHTTP(w, r)
+		})
+	}
 
 	mux.Handle("/admin/", http.StripPrefix("/admin", adminFS))
+	mux.HandleFunc("/pc", func(w http.ResponseWriter, r *http.Request) {
+		target := "/pc/"
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
+		http.Redirect(w, r, target, http.StatusFound)
+	})
+	mux.Handle("/pc/", noCacheStatic(http.StripPrefix("/pc/", pcClientFS)))
+	mux.HandleFunc("/tv", func(w http.ResponseWriter, r *http.Request) {
+		target := "/tv/"
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
+		http.Redirect(w, r, target, http.StatusFound)
+	})
+	mux.Handle("/tv/", noCacheStatic(http.StripPrefix("/tv/", tvClientFS)))
 	mux.Handle("/player.html", publicFS)
 	mux.Handle("/", publicFS)
 
 	mux.HandleFunc("/ws/signaling", swarmTracker.HandleWebSocket)
 	mux.HandleFunc("/live/", seedServer.ServeHTTP)
 	mux.HandleFunc("/api/stream/", seedServer.ServeHLSProxy)
+	mux.HandleFunc("/api/mesh/", seedServer.ServeMesh)
 
 	adminAPI.RegisterRoutes(mux)
+
+	// Dedicated WireGuard-only HTTP mux for Tailscale Mesh peer transport
+	meshMux := http.NewServeMux()
+	meshMux.HandleFunc("/api/mesh/", seedServer.ServeMesh)
+	meshMgr.SetMeshHTTPHandler(meshMux)
+	if meshMgr.IsEnabled() {
+		if err := meshMgr.Start(); err != nil {
+			log.Printf("⚠️ [TAILSCALE-MESH] Startup failed: %v", err)
+		}
+	}
 
 	// 5. Start Dual-Stack IPv4 & IPv6 HTTP Server
 	listenHost := strings.Trim(cfg.Server.WebRTCListenIP, "[]")
@@ -192,17 +257,21 @@ func main() {
 	log.Printf("🔑 Admin Dashboard: http://localhost:%d/admin/ (Auth Active)", cfg.Server.HTTPPort)
 	log.Printf("📺 Web Test Player: http://localhost:%d/player.html", cfg.Server.HTTPPort)
 	log.Printf("🧩 Multiview Player: http://localhost:%d/multiview.html", cfg.Server.HTTPPort)
+	log.Printf("💻 PC Masaüstü İstemcisi: http://localhost:%d/pc/", cfg.Server.HTTPPort)
+	log.Printf("📺 Smart TV İstemcisi: http://localhost:%d/tv/", cfg.Server.HTTPPort)
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-sigCh
-		log.Println("🛑 Shutting down AceStream sessions and server...")
+		log.Println("🛑 Shutting down Tailscale Mesh, AceStream sessions and server...")
+		meshMgr.Stop()
 		aceManager.StopAll()
 		os.Exit(0)
 	}()
 
 	if err := http.ListenAndServe(bindAddr, mux); err != nil {
+		meshMgr.Stop()
 		aceManager.StopAll()
 		log.Fatalf("Server shutdown with error: %v", err)
 	}

@@ -8,6 +8,7 @@ require (
 	github.com/klauspost/compress v1.17.8
 	github.com/pion/webrtc/v3 v3.2.40
 	gopkg.in/yaml.v3 v3.0.1
+	tailscale.com v1.76.6
 )
 
 require (

@@ -78,6 +78,8 @@ type ProgramInfo struct {
 	Description string `json:"description"`
 	Start       string `json:"start"`
 	Stop        string `json:"stop"`
+	StartUnix   int64  `json:"start_unix"`
+	StopUnix    int64  `json:"stop_unix"`
 }
 
 type ChannelGuide struct {
@@ -109,10 +111,37 @@ type EPGManager struct {
 var GlobalEPG = NewEPGManager()
 
 func NewEPGManager() *EPGManager {
-	return &EPGManager{
+	mgr := &EPGManager{
 		sources:    make(map[string]EPGSource),
 		channelMap: make(map[string]string),
 		parsedTVs:  make(map[string]*parsedEPGData),
+	}
+	go mgr.autoRefreshLoop()
+	return mgr
+}
+
+func (m *EPGManager) autoRefreshLoop() {
+	ticker := time.NewTicker(4 * time.Hour)
+	defer ticker.Stop()
+	for range ticker.C {
+		m.mu.RLock()
+		type srcEntry struct {
+			id  string
+			src EPGSource
+		}
+		var list []srcEntry
+		for id, s := range m.sources {
+			if strings.TrimSpace(s.URL) != "" {
+				list = append(list, srcEntry{id: id, src: s})
+			}
+		}
+		m.mu.RUnlock()
+
+		for _, item := range list {
+			if _, _, err := m.fetchAndParse(item.id, item.src.URL, item.src.TimeOffset); err != nil {
+				log.Printf("[EPG] Auto-refresh failed for %s: %v", item.id, err)
+			}
+		}
 	}
 }
 
@@ -344,7 +373,7 @@ func (m *EPGManager) fetchAndParse(sourceID, rawURL string, timeOffset int) (int
 	}
 
 	now := time.Now()
-	windowStart := now.Add(-6 * time.Hour)
+	windowStart := now.Add(-30 * time.Hour)
 	windowEnd := now.Add(72 * time.Hour)
 
 	var channels []XMLTVChannel
@@ -538,6 +567,8 @@ func (m *EPGManager) GetClientEPGJson() map[string]ChannelGuide {
 						Description: p.Desc,
 						Start:       startTime.Format("15:04"),
 						Stop:        stopTime.Format("15:04"),
+						StartUnix:   startTime.Unix(),
+						StopUnix:    stopTime.Unix(),
 					},
 				})
 			}
@@ -550,7 +581,7 @@ func (m *EPGManager) GetClientEPGJson() map[string]ChannelGuide {
 			var schedule []ProgramInfo
 			for i := range parsedList {
 				tp := parsedList[i]
-				if tp.stop.After(now.Add(-2 * time.Hour)) {
+				if tp.stop.After(now.Add(-26 * time.Hour)) {
 					schedule = append(schedule, tp.info)
 				}
 				if (now.Equal(tp.start) || now.After(tp.start)) && now.Before(tp.stop) {

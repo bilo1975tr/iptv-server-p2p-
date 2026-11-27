@@ -19,9 +19,10 @@ const (
 
 // PeerInfo describes a swarm participant with server-verified tier
 type PeerInfo struct {
-	ID     string `json:"id"`
-	Tier   string `json:"tier"` // guest, free, paid, admin
-	IsIPv6 bool   `json:"is_ipv6,omitempty"`
+	ID          string `json:"id"`
+	Tier        string `json:"tier"` // guest, free, paid, admin
+	IsIPv6      bool   `json:"is_ipv6,omitempty"`
+	IsTailscale bool   `json:"is_tailscale,omitempty"`
 }
 
 // P2PStatsReport carries real byte counters from a connected P2P client

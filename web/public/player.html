@@ -466,6 +466,7 @@
                     <span style="color: var(--success)">🌐 Swarm:</span>
                     <strong id="p2pPillStatus">Bağlanıyor...</strong>
                 </div>
+                <button type="button" id="jumpLiveBtn" class="pill" onclick="jumpToLiveEdge()" style="display:none; width:auto; border-color: rgba(239,68,68,0.55); background: rgba(239,68,68,0.16); color:#fecaca; cursor:pointer; font-weight:700;">⏪ Canlıya Dön</button>
                 <a href="/multiview.html" class="pill" style="border-color: rgba(167,139,250,0.45); color:#c4b5fd;">🧩 Multiview</a>
                 <a href="/admin/" class="pill" style="border-color: rgba(56,189,248,0.4);">⚙️ Admin</a>
             </div>
@@ -484,7 +485,7 @@
             <div class="right-panel">
                 <div class="panel-card">
                     <div class="panel-title">
-                        <span>📅 Canlı TV Rehberi</span>
+                        <span id="epgPanelTitle">📅 Canlı TV Rehberi</span>
                         <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: 400;">Detay için tıkla</span>
                     </div>
 
@@ -528,22 +529,26 @@
                         <span class="metric-val" id="p2pOffloadVal">%0 (0 KB)</span>
                     </div>
                     <div class="metric-row">
-                        <span class="metric-label">Upload Free/Guest (%10)</span>
+                        <span class="metric-label">İstemci DVR (.ts)</span>
+                        <span class="metric-val" id="clientDvrVal">0 dk / 60 dk (0 MB)</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Upload Free/Guest (%35)</span>
                         <span class="metric-val" id="uploadFreeVal">0 KB/s</span>
                     </div>
                     <div class="metric-row">
-                        <span class="metric-label">Upload Paid (%10)</span>
+                        <span class="metric-label">Upload Paid (%40)</span>
                         <span class="metric-val" id="uploadPaidVal">0 KB/s</span>
                     </div>
                     <div class="metric-row" style="border-bottom:none; padding-top:8px;">
-                        <span class="metric-label">Hat Upload Limiti (%20)</span>
+                        <span class="metric-label">Hat Upload Limiti (%75)</span>
                         <select id="uploadProfileSelect" onchange="changeUploadProfile(this.value)" style="background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:6px; padding:3px 6px; font-size:0.75rem;">
                             <option value="auto" selected>Otomatik (WebRTC)</option>
-                            <option value="5">5 Mbps (1 Mbps)</option>
-                            <option value="10">10 Mbps (2 Mbps)</option>
-                            <option value="25">25 Mbps (5 Mbps)</option>
-                            <option value="50">50 Mbps (10 Mbps)</option>
-                            <option value="100">100 Mbps (20 Mbps)</option>
+                            <option value="5">5 Mbps (3.75 Mbps P2P)</option>
+                            <option value="10">10 Mbps (7.5 Mbps P2P)</option>
+                            <option value="25">25 Mbps (18.75 Mbps P2P)</option>
+                            <option value="50">50 Mbps (37.5 Mbps P2P)</option>
+                            <option value="100">100 Mbps (75 Mbps P2P)</option>
                         </select>
                     </div>
                 </div>
@@ -1246,8 +1251,13 @@
                 const badgeText = ch.tier === 'paid' ? 'PAID' : 'FREE';
 
                 let nowPlayingText = ch.id;
-                if (epgGuideData && epgGuideData[ch.id] && epgGuideData[ch.id].current) {
-                    nowPlayingText = `Şu an: ${epgGuideData[ch.id].current.title}`;
+                if (epgGuideData && epgGuideData[ch.id]) {
+                    const liveNowUnix = Math.floor(Date.now() / 1000);
+                    const liveMatch = findProgramAtUnix(epgGuideData[ch.id].schedule, liveNowUnix);
+                    const chCurr = liveMatch.current || epgGuideData[ch.id].current;
+                    if (chCurr && chCurr.title) {
+                        nowPlayingText = `Şu an: ${chCurr.title}`;
+                    }
                 }
 
                 const item = document.createElement('div');
@@ -1288,23 +1298,90 @@
             });
         }
 
-        function updateEpgDisplay() {
-            renderChannelList();
+        function getDvrLagSeconds() {
+            try {
+                if (video && video.seekable && video.seekable.length > 0 && Number.isFinite(video.currentTime)) {
+                    const edge = video.seekable.end(video.seekable.length - 1);
+                    if (Number.isFinite(edge) && edge > 0) {
+                        return Math.max(0, edge - video.currentTime);
+                    }
+                }
+            } catch (_) {}
+            return 0;
+        }
+
+        function formatClockHHMM(unixSec) {
+            const d = new Date(unixSec * 1000);
+            return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        }
+
+        function findProgramAtUnix(schedule, targetUnix) {
+            if (!Array.isArray(schedule) || schedule.length === 0) {
+                return { current: null, next: null };
+            }
+            for (let i = 0; i < schedule.length; i++) {
+                const p = schedule[i];
+                const st = Number(p.start_unix || 0);
+                const sp = Number(p.stop_unix || 0);
+                if (st > 0 && sp > 0 && targetUnix >= st && targetUnix < sp) {
+                    return { current: p, next: schedule[i + 1] || null };
+                }
+            }
+            for (let i = 0; i < schedule.length; i++) {
+                const p = schedule[i];
+                const st = Number(p.start_unix || 0);
+                if (st > targetUnix) {
+                    return { current: null, next: p };
+                }
+            }
+            return { current: null, next: null };
+        }
+
+        function updateCurrentChannelEpgBox() {
             const guide = epgGuideData[currentChannelID];
-            if (guide && guide.current) {
-                document.getElementById('currShowTime').innerText = `Şu an: ${guide.current.start} - ${guide.current.stop}`;
-                document.getElementById('currShowTitle').innerText = guide.current.title;
-                document.getElementById('currShowDesc').innerText = guide.current.description || 'Açıklama yok.';
+            const lagSec = getDvrLagSeconds();
+            const isRewound = lagSec > 15;
+            const targetUnix = Math.floor(Date.now() / 1000 - (isRewound ? lagSec : 0));
+
+            const titleEl = document.getElementById('epgPanelTitle');
+            if (titleEl) {
+                titleEl.innerText = isRewound
+                    ? `⏪ DVR Rehberi (${formatClockHHMM(targetUnix)})`
+                    : '📅 Canlı TV Rehberi';
+            }
+
+            let currProg = null;
+            let nextProg = null;
+            if (guide) {
+                const matched = findProgramAtUnix(guide.schedule, targetUnix);
+                if (isRewound) {
+                    currProg = matched.current;
+                    nextProg = matched.next;
+                } else {
+                    currProg = matched.current || guide.current || null;
+                    nextProg = matched.next || guide.next || null;
+                }
+            }
+
+            if (currProg) {
+                const prefix = isRewound ? 'DVR anı' : 'Şu an';
+                document.getElementById('currShowTime').innerText = `${prefix}: ${currProg.start} - ${currProg.stop}`;
+                document.getElementById('currShowTitle').innerText = currProg.title;
+                document.getElementById('currShowDesc').innerText = currProg.description || 'Açıklama yok.';
+            } else if (isRewound && guide) {
+                document.getElementById('currShowTime').innerText = `DVR anı: ${formatClockHHMM(targetUnix)}`;
+                document.getElementById('currShowTitle').innerText = 'Bu saat için geçmiş EPG kaydı yok';
+                document.getElementById('currShowDesc').innerText = 'EPG kaynağı bu saate ait geçmiş programı içermiyor olabilir.';
             } else {
                 document.getElementById('currShowTime').innerText = 'Şu an: Bilgi Yok';
                 document.getElementById('currShowTitle').innerText = 'Yayın akışı bulunamadı';
                 document.getElementById('currShowDesc').innerText = 'Admin panelinden EPG eşlemesi yapabilirsiniz.';
             }
 
-            if (guide && guide.next) {
-                document.getElementById('nextShowTime').innerText = `Sonraki: ${guide.next.start} - ${guide.next.stop}`;
-                document.getElementById('nextShowTitle').innerText = guide.next.title;
-                document.getElementById('nextShowDesc').innerText = guide.next.description || '';
+            if (nextProg) {
+                document.getElementById('nextShowTime').innerText = `Sonraki: ${nextProg.start} - ${nextProg.stop}`;
+                document.getElementById('nextShowTitle').innerText = nextProg.title;
+                document.getElementById('nextShowDesc').innerText = nextProg.description || '';
             } else {
                 document.getElementById('nextShowTime').innerText = 'Sonraki: --:--';
                 document.getElementById('nextShowTitle').innerText = '--';
@@ -1312,10 +1389,77 @@
             }
         }
 
+        function updateEpgDisplay() {
+            renderChannelList();
+            updateCurrentChannelEpgBox();
+        }
+
         const video = document.getElementById('videoPlayer');
         let activeBlobUrl = null;
+        let liveLagTimer = null;
+
+        function formatLagClock(sec) {
+            const s = Math.max(0, Math.floor(sec));
+            const m = Math.floor(s / 60);
+            const r = s % 60;
+            return `${m}:${String(r).padStart(2, '0')}`;
+        }
+
+        function jumpToLiveEdge() {
+            try {
+                if (video.seekable && video.seekable.length > 0) {
+                    const edge = video.seekable.end(video.seekable.length - 1);
+                    if (Number.isFinite(edge) && edge > 0) {
+                        video.currentTime = Math.max(0, edge - 3);
+                    }
+                }
+                video.play().catch(() => {});
+            } catch (_) {}
+            updateCurrentChannelEpgBox();
+        }
+
+        video.addEventListener('pause', () => {
+            if (!video.ended && p2pEngine && !p2pEngine.destroyed) {
+                p2pEngine.startPausedDvrPrefetch();
+            }
+        });
+
+        video.addEventListener('play', () => {
+            if (p2pEngine && !p2pEngine.destroyed) {
+                p2pEngine.stopPausedDvrPrefetch();
+            }
+        });
+
+        video.addEventListener('seeked', () => {
+            updateCurrentChannelEpgBox();
+        });
+
+        function startLiveLagMonitor() {
+            if (liveLagTimer) clearInterval(liveLagTimer);
+            const btn = document.getElementById('jumpLiveBtn');
+            liveLagTimer = setInterval(() => {
+                updateCurrentChannelEpgBox();
+                if (!btn) return;
+                const lag = getDvrLagSeconds();
+                if (lag > 15) {
+                    btn.style.display = 'flex';
+                    btn.innerText = `⏪ -${formatLagClock(lag)} | Canlıya Dön`;
+                    return;
+                }
+                btn.style.display = 'none';
+            }, 1500);
+        }
 
         function stopCurrentPlayback() {
+            if (liveLagTimer) {
+                clearInterval(liveLagTimer);
+                liveLagTimer = null;
+            }
+            const btn = document.getElementById('jumpLiveBtn');
+            if (btn) btn.style.display = 'none';
+            if (p2pEngine && !p2pEngine.destroyed) {
+                p2pEngine.stopPausedDvrPrefetch();
+            }
             if (hlsInstance) {
                 hlsInstance.destroy();
                 hlsInstance = null;
@@ -1370,21 +1514,46 @@
 
                 const contentType = (headCheck.headers.get('content-type') || '').toLowerCase();
                 if (headCheck.ok && (contentType.includes('mpegurl') || contentType.includes('text'))) {
-                    document.getElementById('transportMode').innerText = ch.is_acestream ? 'AceStream HLS + P2P' : 'HLS + WebRTC P2P';
+                    document.getElementById('transportMode').innerText = ch.is_acestream ? 'AceStream HLS (.ts) + P2P DVR' : 'HLS (.ts) + P2P DVR';
                     if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-                        const hlsCfg = { lowLatencyMode: true };
+                        const hlsCfg = {
+                            lowLatencyMode: false,
+                            liveSyncDurationCount: 4,
+                            liveMaxLatencyDurationCount: Infinity,
+                            maxLiveSyncPlaybackRate: 1,
+                            maxBufferLength: 60,
+                            maxMaxBufferLength: 120,
+                            backBufferLength: 90,
+                            maxBufferHole: 1.5,
+                            nudgeOffset: 0.2,
+                            nudgeMaxRetry: 8,
+                            fragLoadingTimeOut: 20000,
+                            fragLoadingMaxRetry: 6,
+                            fragLoadingRetryDelay: 500,
+                            manifestLoadingTimeOut: 15000,
+                            manifestLoadingMaxRetry: 6,
+                            levelLoadingTimeOut: 15000,
+                            levelLoadingMaxRetry: 6,
+                            enableWorker: true
+                        };
                         if (p2pEngine && Hls.DefaultConfig && Hls.DefaultConfig.loader) {
+                            hlsCfg.pLoader = p2pEngine.createHlsPlaylistLoaderClass(Hls.DefaultConfig.loader);
                             hlsCfg.fLoader = p2pEngine.createHlsLoaderClass(Hls.DefaultConfig.loader);
                         }
+                        let hlsNetRetries = 0;
+                        let hlsMediaRecoverCount = 0;
+                        let lastMediaRecoverAt = 0;
                         hlsInstance = new Hls(hlsCfg);
                         hlsInstance.loadSource(proxyUrl);
                         hlsInstance.attachMedia(video);
+                        startLiveLagMonitor();
                         hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
                             hideOverlay();
                             video.play().catch(() => {});
                         });
                         hlsInstance.on(Hls.Events.FRAG_LOADED, (evt, data) => {
                             hideOverlay();
+                            hlsNetRetries = 0;
                             fragCount++;
                             document.getElementById('chunkSeq').innerText = `#${fragCount}`;
                             if (data && data.frag && data.frag.stats && data.frag.stats.loading) {
@@ -1393,14 +1562,30 @@
                             }
                         });
                         hlsInstance.on(Hls.Events.ERROR, (evt, data) => {
-                            if (data && data.fatal) {
-                                startMSEFallback(chId, !!ch.is_acestream);
+                            if (!data || !data.fatal) return;
+                            if (data.type === Hls.ErrorTypes.NETWORK_ERROR && hlsNetRetries < 4) {
+                                hlsNetRetries++;
+                                setTimeout(() => {
+                                    if (hlsInstance) hlsInstance.startLoad();
+                                }, 1200);
+                                return;
                             }
+                            if (data.type === Hls.ErrorTypes.MEDIA_ERROR && hlsMediaRecoverCount < 3) {
+                                const now = Date.now();
+                                if (now - lastMediaRecoverAt > 3000) {
+                                    hlsMediaRecoverCount++;
+                                    lastMediaRecoverAt = now;
+                                    try { hlsInstance.recoverMediaError(); } catch (_) {}
+                                    return;
+                                }
+                            }
+                            startMSEFallback(chId, !!ch.is_acestream);
                         });
                         return;
                     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                         video.src = proxyUrl;
                         hideOverlay();
+                        startLiveLagMonitor();
                         video.play().catch(() => {});
                         return;
                     }
@@ -1466,6 +1651,7 @@
                 };
 
                 const attachSBListeners = (sourceBuf) => {
+                    let initialAutoStarted = false;
                     sourceBuf.addEventListener('error', (e) => {
                         console.error('[PLAYER SB ERROR]', e);
                     });
@@ -1475,11 +1661,14 @@
                             if (sourceBuf.buffered.length > 0) {
                                 const bufStart = sourceBuf.buffered.start(0);
                                 const bufEnd = sourceBuf.buffered.end(sourceBuf.buffered.length - 1);
-                                if (video.currentTime < bufStart || (bufEnd - video.currentTime > 8)) {
-                                    video.currentTime = Math.max(bufStart, bufEnd - 1.2);
+                                if (video.currentTime < bufStart) {
+                                    video.currentTime = bufStart;
                                 }
-                                if (video.paused) {
-                                    video.play().catch(() => {});
+                                if (!initialAutoStarted && bufEnd - bufStart >= 0.5) {
+                                    initialAutoStarted = true;
+                                    if (video.paused) {
+                                        video.play().catch(() => {});
+                                    }
                                 }
                             }
                         } catch (_) {}
@@ -1532,8 +1721,8 @@
                             return;
                         }
 
-                        if (sb.buffered.length > 0 && video.currentTime - sb.buffered.start(0) > 30) {
-                            sb.remove(sb.buffered.start(0), video.currentTime - 15);
+                        if (sb.buffered.length > 0 && video.currentTime - sb.buffered.start(0) > 120) {
+                            sb.remove(sb.buffered.start(0), video.currentTime - 60);
                             return;
                         }
 
@@ -1638,6 +1827,18 @@
                         document.getElementById('p2pPillStatus').innerText = `${s.totalSwarmPeers} Peer Aktif`;
                     }
                     document.getElementById('p2pOffloadVal').innerText = `%${s.offloadPct} (${formatBytesShort(s.p2pBytesIn)} P2P)`;
+                    const dvrEl = document.getElementById('clientDvrVal');
+                    if (dvrEl && s.dvr) {
+                        const sec = s.dvr.timelineSec || 0;
+                        const sizeStr = formatBytesShort(s.dvr.bytes || 0);
+                        if (sec > 3900) {
+                            const hrs = (sec / 3600).toFixed(1);
+                            dvrEl.innerText = `${hrs} saat (${sizeStr})`;
+                        } else {
+                            const mins = (sec / 60).toFixed(1);
+                            dvrEl.innerText = `${mins} dk / 60 dk (${sizeStr})`;
+                        }
+                    }
                     const q = s.quota;
                     document.getElementById('uploadFreeVal').innerText = `${(q.freeRateBps / 1024).toFixed(1)}/${(q.freeLimitBps / 1024).toFixed(0)} KB/s (${formatBytesShort(q.outFreeBytes)})`;
                     document.getElementById('uploadPaidVal').innerText = `${(q.paidRateBps / 1024).toFixed(1)}/${(q.paidLimitBps / 1024).toFixed(0)} KB/s (${formatBytesShort(q.outPaidBytes)})`;

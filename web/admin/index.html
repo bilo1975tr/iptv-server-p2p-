@@ -229,7 +229,7 @@
                     <label for="aceSearchQuery">Kanal Adı veya Doğrudan AceStream ID / Link (acestream://...)</label>
                     <input type="text" id="aceSearchQuery" placeholder="Örn: sport, arena, acestream://... veya 40 haneli ID" required>
                 </div>
-                <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                <div class="grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                     <div class="form-group" style="margin-bottom:0;">
                         <label for="aceSearchCategory">Kategori</label>
                         <select id="aceSearchCategory">
@@ -246,21 +246,78 @@
                             <option value="paid">Paid (Şifreli)</option>
                         </select>
                     </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label for="aceSearchLimit">Sonuç Limiti</label>
+                        <select id="aceSearchLimit">
+                            <option value="50">50 sonuç</option>
+                            <option value="100">100 sonuç</option>
+                            <option value="200" selected>200 sonuç (Maks)</option>
+                        </select>
+                    </div>
                 </div>
                 <button type="submit" class="btn-secondary">🔍 ace_engine.exe Üzerinden Ara</button>
             </form>
             <div id="aceSearchFeedback" class="result-box"></div>
+            <div id="aceBulkBar" style="display:none; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-top:10px; padding:8px 10px; background:rgba(15,23,42,0.85); border:1px solid #334155; border-radius:8px;">
+                <div style="display:flex; align-items:center; gap:8px; font-size:0.78rem; color:var(--text-muted);">
+                    <span id="aceSelectedCountLabel">0 seçili</span>
+                    <button type="button" class="btn-inline" onclick="selectActiveAceResults()" style="background:#334155; color:#e2e8f0;">Sadece Aktifler</button>
+                </div>
+                <button type="button" id="aceBulkAddBtn" class="btn-inline btn-success" onclick="bulkAddAceStreamChannels()">📥 Seçilenleri Toplu Ekle</button>
+            </div>
             <div style="max-height: 230px; overflow-y: auto; margin-top: 10px;">
                 <table style="font-size: 0.8rem;">
                     <thead>
                         <tr>
+                            <th style="width:28px; text-align:center;"><input type="checkbox" id="aceSelectAllChk" checked onchange="toggleAllAceResults(this.checked)" style="width:auto;"></th>
                             <th>Kanal</th>
                             <th>Kaynak / Durum</th>
                             <th>İşlem</th>
                         </tr>
                     </thead>
                     <tbody id="aceSearchResultsBody">
-                        <tr><td colspan="3" style="color:var(--muted);">Arama yapmak için sorgu girin.</td></tr>
+                        <tr><td colspan="4" style="color:var(--muted);">Arama yapmak için sorgu girin.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tailscale Mesh & Multi-Server P2P Section -->
+    <h2>🕸️ Tailscale Mesh &amp; Çoklu Sunucu P2P Ağı</h2>
+    <div class="grid" style="margin-bottom:30px;">
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h3 style="margin:0;">Yerel Düğüm Durumu (tsnet)</h3>
+                <span id="meshStatusBadge" class="badge-idle">Yükleniyor...</span>
+            </div>
+            <div style="font-size:0.84rem; line-height:1.65;">
+                <div><b>Düğüm / Rol:</b> <span id="meshNodeRoleInfo">-</span></div>
+                <div><b>Tailscale IP / DNS:</b> <span id="meshIpDnsInfo">-</span></div>
+                <div><b>Yetkilendirme:</b> <span id="meshAuthInfo">-</span></div>
+                <div><b>Mesh Trafiği:</b> <span id="meshTrafficInfo">Çekilen: 0 MB | Sunulan: 0 MB</span></div>
+                <div id="meshErrorText" style="color:var(--danger); font-size:0.78rem; margin-top:6px; display:none;"></div>
+            </div>
+        </div>
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h3 style="margin:0;">Keşfedilen Mesh Düğümleri</h3>
+                <button class="btn-inline btn-secondary" onclick="fetchMeshStatus()" style="padding:5px 10px; font-size:0.75rem;">↻ Yenile</button>
+            </div>
+            <div style="max-height: 220px; overflow-y: auto;">
+                <table style="font-size: 0.78rem;">
+                    <thead>
+                        <tr>
+                            <th>Hostname</th>
+                            <th>IP / Bağlantı</th>
+                            <th>Rol</th>
+                            <th>RTT</th>
+                            <th>Aktif Kanallar</th>
+                            <th>Durum</th>
+                        </tr>
+                    </thead>
+                    <tbody id="meshPeersBody">
+                        <tr><td colspan="6" style="color:var(--muted);">Henüz mesh düğümü keşfedilmedi.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -271,11 +328,11 @@
     <h2>📂 M3U, EPG ve Kullanıcı Yönetimi</h2>
     <div class="grid">
         <div class="card">
-            <h3>M3U URL Adresi veya Metin İçe Aktar</h3>
+            <h3>M3U URL, Çoklu Link, JSON veya Metin İçe Aktar</h3>
             <form id="m3uForm">
                 <div class="form-group">
-                    <label for="m3uContent">M3U İndirme Linki veya Metin İçeriği</label>
-                    <textarea id="m3uContent" rows="3" placeholder="http://provider.com/get.php?type=m3u" required></textarea>
+                    <label for="m3uContent">M3U Linki, Çoklu URL, JSON Paketi (tv/film/dizi/radyo/karma/epg) veya #EXTM3U İçeriği</label>
+                    <textarea id="m3uContent" rows="4" placeholder='Tek URL, satır satır M3U linkleri, #EXTM3U içeriği veya {"tv": [...], "epg": [...]} JSON yapıştırın' required></textarea>
                 </div>
                 <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                     <div class="form-group" style="margin-bottom:0;">
@@ -293,6 +350,8 @@
                             <option value="Canlı TV">Canlı TV</option>
                             <option value="Filmler">Filmler</option>
                             <option value="Diziler">Diziler</option>
+                            <option value="Radyo">Radyo</option>
+                            <option value="Karma">Karma</option>
                         </select>
                     </div>
                 </div>
@@ -316,7 +375,7 @@
                     <input type="checkbox" id="m3uInsecureTls">
                     <span>Kendinden imzalı SSL sertifikalarına izin ver (Insecure TLS)</span>
                 </label>
-                <button type="submit">M3U İçe Aktar ve Kaydet</button>
+                <button type="submit" id="m3uSubmitBtn">M3U İçe Aktar ve Kaydet</button>
             </form>
             <div id="m3uResult" class="result-box"></div>
         </div>
@@ -512,6 +571,7 @@
                 </tbody>
             </table>
         </div>
+        <div id="tablePaginationBar" style="display:none; gap:10px; align-items:center; justify-content:center; margin-top:12px;"></div>
     </div>
 
     <!-- Add Channel Modal -->
@@ -649,6 +709,8 @@
         let allEpgChannels = [];
         let selectedStreamIDs = new Set();
         let duplicateFilterActive = false;
+        let visibleChannelLimit = 200;
+        let m3uBatchAbortController = null;
         let adminToken = localStorage.getItem('iptv_admin_token') || '';
         let pollingStarted = false;
 
@@ -750,11 +812,13 @@
                 const data = await res.json();
                 let totalPeers = 0;
                 let ipv6Peers = 0;
+                let tsPeers = 0;
                 let p2pKB = 0;
                 let httpKB = 0;
                 for (let ch in data) {
                     totalPeers += data[ch].total_peers || 0;
                     ipv6Peers += data[ch].ipv6_peers || 0;
+                    tsPeers += data[ch].tailscale_peers || 0;
                     p2pKB += data[ch].p2p_kb_in || 0;
                     httpKB += data[ch].http_kb_in || 0;
                 }
@@ -762,7 +826,8 @@
                 const offloadPct = totalKB > 0 ? Math.round((p2pKB / totalKB) * 100) : 0;
                 const p2pMB = (p2pKB / 1024).toFixed(1);
                 document.getElementById('peerCount').innerText = `${totalPeers} Peer`;
-                document.getElementById('ipv6Sub').innerText = `IPv6: ${ipv6Peers} | IPv4: ${totalPeers - ipv6Peers} | P2P Tasarruf: %${offloadPct} (${p2pMB} MB)`;
+                const tsPart = tsPeers > 0 ? ` | Tailscale: ${tsPeers}` : '';
+                document.getElementById('ipv6Sub').innerText = `IPv6: ${ipv6Peers} | IPv4: ${totalPeers - ipv6Peers}${tsPart} | P2P Tasarruf: %${offloadPct} (${p2pMB} MB)`;
             } catch (e) {}
         }
 
@@ -1029,19 +1094,32 @@
 
         function filterUnmapped() {
             duplicateFilterActive = false;
+            visibleChannelLimit = 200;
             document.getElementById('tableSearch').value = 'Atanmadı';
             renderTable();
         }
 
         function filterDuplicates() {
             duplicateFilterActive = true;
+            visibleChannelLimit = 200;
             document.getElementById('tableSearch').value = '';
             renderTable();
         }
 
         function clearSearch() {
             duplicateFilterActive = false;
+            visibleChannelLimit = 200;
             document.getElementById('tableSearch').value = '';
+            renderTable();
+        }
+
+        function showMoreChannels(step = 200) {
+            visibleChannelLimit += step;
+            renderTable();
+        }
+
+        function showAllChannels() {
+            visibleChannelLimit = Number.MAX_SAFE_INTEGER;
             renderTable();
         }
 
@@ -1049,6 +1127,7 @@
             const query = document.getElementById('tableSearch').value.toLowerCase();
             if (query !== '') duplicateFilterActive = false;
             const tbody = document.getElementById('streamTableBody');
+            const paginationBar = document.getElementById('tablePaginationBar');
             tbody.innerHTML = '';
 
             const dupIds = computeDuplicateUrlSet();
@@ -1076,10 +1155,12 @@
 
             if (filtered.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">${duplicateFilterActive ? '✅ Mükerrer yayın URL\'sine sahip kanal bulunmadı.' : 'Kanal bulunamadı.'}</td></tr>`;
+                if (paginationBar) paginationBar.style.display = 'none';
                 return;
             }
 
-            filtered.forEach(s => {
+            const displaySlice = filtered.slice(0, visibleChannelLimit);
+            displaySlice.forEach(s => {
                 const badgeClass = s.tier === 'paid' ? 'badge-paid' : 'badge-free';
                 const aceBadge = s.is_acestream ? ` <span class="badge-live" style="background:#7c3aed;">ACESTREAM</span>` : '';
                 const dupBadge = dupIds.has(s.id) ? ` <span class="badge-live" style="background:#b45309;">⚠️ Mükerrer URL</span>` : '';
@@ -1113,6 +1194,20 @@
                 tr.querySelector('.btn-del-ch').addEventListener('click', () => deleteChannel(s.id));
                 tbody.appendChild(tr);
             });
+
+            if (paginationBar) {
+                if (filtered.length > displaySlice.length) {
+                    const remaining = filtered.length - displaySlice.length;
+                    paginationBar.style.display = 'flex';
+                    paginationBar.innerHTML = `
+                        <span style="font-size:0.82rem; color:var(--muted);">İlk ${displaySlice.length} / ${filtered.length} kanal gösteriliyor</span>
+                        <button type="button" class="btn-inline btn-secondary" onclick="showMoreChannels(200)">+200 Daha Göster</button>
+                        <button type="button" class="btn-inline" style="background:#334155; color:white;" onclick="showAllChannels()">Tümünü Göster (${remaining} daha)</button>
+                    `;
+                } else {
+                    paginationBar.style.display = 'none';
+                }
+            }
         }
 
         function openMergeModal() {
@@ -1340,19 +1435,304 @@
             }
         });
 
+        function mapJsonCategoryToContentType(key, fallback) {
+            const k = String(key || '').trim().toLowerCase();
+            if (['tv', 'live', 'canli', 'canlı tv', 'channels'].includes(k)) return 'Canlı TV';
+            if (['film', 'filmler', 'movie', 'movies', 'vod'].includes(k)) return 'Filmler';
+            if (['dizi', 'diziler', 'series', 'show', 'shows'].includes(k)) return 'Diziler';
+            if (['radyo', 'radio'].includes(k)) return 'Radyo';
+            if (['karma', 'mixed', 'mix'].includes(k)) return 'Karma';
+            return fallback || 'Canlı TV';
+        }
+
+        function parseBatchImportInput(rawText, defaultContentType) {
+            const trimmed = String(rawText || '').trim();
+            if (!trimmed) return null;
+
+            const m3uTasks = [];
+            const epgUrls = [];
+            const seenM3u = new Set();
+            const seenEpg = new Set();
+
+            const isHttp = (u) => /^https?:\/\//i.test(String(u || '').trim());
+            const pushM3u = (u, ct) => {
+                const clean = String(u || '').trim();
+                if (!isHttp(clean) || seenM3u.has(clean)) return;
+                seenM3u.add(clean);
+                m3uTasks.push({ url: clean, content_type: ct });
+            };
+            const pushEpg = (u) => {
+                const clean = String(u || '').trim();
+                if (!isHttp(clean) || seenEpg.has(clean)) return;
+                seenEpg.add(clean);
+                epgUrls.push(clean);
+            };
+
+            if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    if (Array.isArray(parsed)) {
+                        parsed.forEach(item => {
+                            if (typeof item === 'string') pushM3u(item, defaultContentType);
+                        });
+                    } else if (parsed && typeof parsed === 'object') {
+                        const preferred = ['tv', 'film', 'dizi', 'radyo', 'karma', 'epg'];
+                        const visited = new Set();
+                        const handleKey = (key) => {
+                            if (visited.has(key)) return;
+                            visited.add(key);
+                            const val = parsed[key];
+                            if (!Array.isArray(val)) return;
+                            if (key.toLowerCase() === 'epg') {
+                                val.forEach(u => { if (typeof u === 'string') pushEpg(u); });
+                            } else {
+                                const ct = mapJsonCategoryToContentType(key, defaultContentType);
+                                val.forEach(u => { if (typeof u === 'string') pushM3u(u, ct); });
+                            }
+                        };
+                        preferred.forEach(pk => {
+                            const match = Object.keys(parsed).find(k => k.toLowerCase() === pk);
+                            if (match) handleKey(match);
+                        });
+                        Object.keys(parsed).forEach(handleKey);
+                    }
+                    if (m3uTasks.length > 0 || epgUrls.length > 0) {
+                        return { m3uTasks, epgUrls };
+                    }
+                } catch (_) {
+                    // Fall through to line/backend parser if JSON is malformed
+                }
+            }
+
+            const upper = trimmed.toUpperCase();
+            if (!upper.includes('#EXTM3U') && !upper.includes('#EXTINF')) {
+                const lines = trimmed.split(/\r?\n/).map(l => l.trim().replace(/^["']+|["',]+$/g, '').trim()).filter(Boolean);
+                if (lines.length > 1 && lines.every(isHttp)) {
+                    lines.forEach(u => pushM3u(u, defaultContentType));
+                    return { m3uTasks, epgUrls: [] };
+                }
+            }
+            return null;
+        }
+
+        function cancelM3UBatchImport() {
+            if (m3uBatchAbortController) {
+                m3uBatchAbortController.abort();
+            }
+        }
+
         document.getElementById('m3uForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const resultBox = document.getElementById('m3uResult');
+            const submitBtn = document.getElementById('m3uSubmitBtn');
+            const rawContent = document.getElementById('m3uContent').value.trim();
+            const tier = document.getElementById('m3uTier').value;
+            const language = document.getElementById('m3uLanguage').value;
+            const defaultContentType = document.getElementById('m3uContentType').value;
+            const autoPrune = document.getElementById('autoPrune').value === 'true';
+            const insecureTls = document.getElementById('m3uInsecureTls').checked;
+
             resultBox.style.display = 'block';
+
+            const batch = parseBatchImportInput(rawContent, defaultContentType);
+            if (batch && (batch.m3uTasks.length > 0 || batch.epgUrls.length > 0)) {
+                if (m3uBatchAbortController) m3uBatchAbortController.abort();
+                m3uBatchAbortController = new AbortController();
+                const signal = m3uBatchAbortController.signal;
+
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.6';
+
+                const stats = {
+                    m3uDone: 0,
+                    m3uTotal: batch.m3uTasks.length,
+                    epgDone: 0,
+                    epgTotal: batch.epgUrls.length,
+                    epgAdded: 0,
+                    epgSkipped: 0,
+                    added: 0,
+                    merged: 0,
+                    dedupedUrl: 0,
+                    skippedDeleted: 0,
+                    pruned: 0,
+                    failedM3u: [],
+                    failedEpg: [],
+                    currentLabel: 'Başlatılıyor...'
+                };
+
+                const renderProgress = (finished = false, cancelled = false) => {
+                    const totalSteps = stats.m3uTotal + stats.epgTotal;
+                    const doneSteps = stats.m3uDone + stats.epgDone;
+                    const pct = totalSteps > 0 ? Math.round((doneSteps / totalSteps) * 100) : 100;
+                    const title = cancelled
+                        ? '⚠️ <b>Toplu İçe Aktarım Kullanıcı Tarafından Durduruldu</b>'
+                        : (finished ? '✅ <b>Toplu İçe Aktarım Tamamlandı!</b>' : `⏳ <b>Toplu İçe Aktarım Devam Ediyor (%${pct})...</b>`);
+
+                    const failM3uHtml = stats.failedM3u.length > 0
+                        ? `<details style="margin-top:6px;"><summary style="cursor:pointer; color:#f59e0b;">Ulaşılamayan / Hatalı M3U Linkleri (${stats.failedM3u.length})</summary><div style="max-height:90px; overflow-y:auto; font-size:0.74rem; color:#cbd5e1; margin-top:4px;">${stats.failedM3u.map(f => escapeHtml(f)).join('<br>')}</div></details>`
+                        : '';
+                    const failEpgHtml = stats.failedEpg.length > 0
+                        ? `<details style="margin-top:4px;"><summary style="cursor:pointer; color:#f59e0b;">Hatalı EPG Linkleri (${stats.failedEpg.length})</summary><div style="max-height:70px; overflow-y:auto; font-size:0.74rem; color:#cbd5e1; margin-top:4px;">${stats.failedEpg.map(f => escapeHtml(f)).join('<br>')}</div></details>`
+                        : '';
+
+                    resultBox.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                            <div>${title}</div>
+                            ${!finished && !cancelled ? `<button type="button" class="btn-inline btn-danger" onclick="cancelM3UBatchImport()" style="padding:3px 9px; font-size:0.74rem;">⏹ Durdur</button>` : ''}
+                        </div>
+                        <div style="background:#1e293b; border-radius:4px; height:8px; overflow:hidden; margin:8px 0;">
+                            <div style="width:${pct}%; height:100%; background:${cancelled ? '#f59e0b' : '#22c55e'}; transition:width 0.2s;"></div>
+                        </div>
+                        <div style="font-size:0.78rem; color:#94a3b8; margin-bottom:6px; word-break:break-all;">
+                            M3U: <b>${stats.m3uDone}/${stats.m3uTotal}</b> • EPG: <b>${stats.epgDone}/${stats.epgTotal}</b>${!finished && !cancelled ? ` — ${escapeHtml(stats.currentLabel)}` : ''}
+                        </div>
+                        • Yeni Eklenen Kanal: <b>${stats.added}</b><br>
+                        • Birleştirilen Alternatif / Mükerrer Kaynak: <b style="color:#38bdf8;">${stats.merged}</b> (Aynı URL Engellendi: <b>${stats.dedupedUrl}</b>)<br>
+                        • Silinen / Kara Liste: <b style="color:#e11d48;">${stats.skippedDeleted}</b><br>
+                        • Temizlenen Ölü Kanal: <b style="color:#e11d48;">${stats.pruned}</b><br>
+                        • Eklenen EPG Kaynağı: <b style="color:#22c55e;">${stats.epgAdded}</b>${stats.epgSkipped > 0 ? ` (${stats.epgSkipped} zaten kayıtlı)` : ''}
+                        ${failM3uHtml}
+                        ${failEpgHtml}
+                    `;
+                };
+
+                renderProgress(false, false);
+
+                let cancelled = false;
+                try {
+                    let m3uIdx = 0;
+                    const m3uWorker = async () => {
+                        while (m3uIdx < batch.m3uTasks.length) {
+                            if (signal.aborted) return;
+                            const task = batch.m3uTasks[m3uIdx++];
+                            stats.currentLabel = `[${task.content_type}] ${task.url}`;
+                            renderProgress(false, false);
+                            try {
+                                const res = await adminFetch('/api/admin/m3u/import', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    signal,
+                                    body: JSON.stringify({
+                                        m3u_content: task.url,
+                                        tier,
+                                        language,
+                                        content_type: task.content_type,
+                                        auto_prune: autoPrune,
+                                        insecure_tls: insecureTls
+                                    })
+                                });
+                                if (!res.ok) {
+                                    const errTxt = (await res.text()).trim();
+                                    stats.failedM3u.push(`${task.url} (${errTxt || res.status})`);
+                                } else {
+                                    const data = await res.json();
+                                    stats.added += data.added_count || 0;
+                                    stats.merged += data.merged_count || 0;
+                                    stats.dedupedUrl += data.deduped_url_count || 0;
+                                    stats.skippedDeleted += data.skipped_deleted || 0;
+                                    stats.pruned += data.pruned_count || 0;
+                                }
+                            } catch (err) {
+                                if (err.name === 'AbortError') {
+                                    cancelled = true;
+                                    return;
+                                }
+                                stats.failedM3u.push(`${task.url} (${err.message})`);
+                            }
+                            stats.m3uDone++;
+                            if (stats.m3uDone % 15 === 0) {
+                                fetchStreams();
+                                fetchM3USources();
+                            }
+                            renderProgress(false, false);
+                        }
+                    };
+
+                    const m3uConcurrency = Math.min(3, Math.max(1, batch.m3uTasks.length));
+                    await Promise.all(Array.from({ length: m3uConcurrency }, m3uWorker));
+
+                    if (!signal.aborted && batch.epgUrls.length > 0) {
+                        let existingEpgSet = new Set();
+                        try {
+                            const existingRes = await adminFetch('/api/admin/epg/sources', { signal });
+                            if (existingRes.ok) {
+                                const existingList = await existingRes.json();
+                                (existingList || []).forEach(s => { if (s && s.url) existingEpgSet.add(s.url.trim()); });
+                            }
+                        } catch (_) {}
+
+                        const offsetVal = parseInt(document.getElementById('epgOffset').value, 10);
+                        const timeOffset = isNaN(offsetVal) ? 999 : offsetVal;
+
+                        let epgIdx = 0;
+                        const epgWorker = async () => {
+                            while (epgIdx < batch.epgUrls.length) {
+                                if (signal.aborted) return;
+                                const epgUrl = batch.epgUrls[epgIdx++];
+                                if (existingEpgSet.has(epgUrl)) {
+                                    stats.epgSkipped++;
+                                    stats.epgDone++;
+                                    renderProgress(false, false);
+                                    continue;
+                                }
+                                stats.currentLabel = `[EPG] ${epgUrl}`;
+                                renderProgress(false, false);
+                                try {
+                                    const res = await adminFetch('/api/admin/epg/source', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        signal,
+                                        body: JSON.stringify({
+                                            id: 'bundle_epg_' + Date.now() + '_' + epgIdx,
+                                            url: epgUrl,
+                                            time_offset: timeOffset
+                                        })
+                                    });
+                                    if (!res.ok) {
+                                        const errTxt = (await res.text()).trim();
+                                        stats.failedEpg.push(`${epgUrl} (${errTxt || res.status})`);
+                                    } else {
+                                        stats.epgAdded++;
+                                    }
+                                } catch (err) {
+                                    if (err.name === 'AbortError') {
+                                        cancelled = true;
+                                        return;
+                                    }
+                                    stats.failedEpg.push(`${epgUrl} (${err.message})`);
+                                }
+                                stats.epgDone++;
+                                renderProgress(false, false);
+                            }
+                        };
+                        const epgConcurrency = Math.min(2, batch.epgUrls.length);
+                        await Promise.all(Array.from({ length: epgConcurrency }, epgWorker));
+                    }
+                } finally {
+                    cancelled = cancelled || signal.aborted;
+                    m3uBatchAbortController = null;
+                    submitBtn.disabled = false;
+                    submitBtn.style.opacity = '1';
+                    renderProgress(true, cancelled);
+                    fetchStreams();
+                    fetchM3USources();
+                    if (batch.epgUrls.length > 0) {
+                        fetchEPGSources();
+                        fetchEpgChannels();
+                    }
+                }
+                return;
+            }
+
             resultBox.innerText = '⏳ M3U adresi indiriliyor, kanallar taranıyor, alternatif kaynaklar birleştiriliyor...';
 
             const payload = {
-                m3u_content: document.getElementById('m3uContent').value.trim(),
-                tier: document.getElementById('m3uTier').value,
-                language: document.getElementById('m3uLanguage').value,
-                content_type: document.getElementById('m3uContentType').value,
-                auto_prune: document.getElementById('autoPrune').value === 'true',
-                insecure_tls: document.getElementById('m3uInsecureTls').checked
+                m3u_content: rawContent,
+                tier: tier,
+                language: language,
+                content_type: defaultContentType,
+                auto_prune: autoPrune,
+                insecure_tls: insecureTls
             };
 
             try {
@@ -1371,9 +1751,14 @@
                     • Yeni Eklenen Kanal: <b>${data.added_count}</b><br>
                     • Birleştirilen Alternatif / Mükerrer Kaynak: <b style="color:#38bdf8;">${data.merged_count}</b> (Aynı URL Engellendi: <b>${data.deduped_url_count || 0}</b>)<br>
                     • Silinen / Kara Liste: <b style="color:#e11d48;">${data.skipped_deleted}</b><br>
-                    • Temizlenen Ölü Kanal: <b style="color:#e11d48;">${data.pruned_count}</b>`;
+                    • Temizlenen Ölü Kanal: <b style="color:#e11d48;">${data.pruned_count}</b>` +
+                    (data.epg_added_count ? `<br>• Eklenen EPG Kaynağı: <b style="color:#22c55e;">${data.epg_added_count}</b>` : '');
                 fetchStreams();
                 fetchM3USources();
+                if (data.epg_added_count) {
+                    fetchEPGSources();
+                    fetchEpgChannels();
+                }
             } catch (err) {
                 resultBox.innerText = '❌ Hata oluştu: ' + err.message;
             }
@@ -1471,6 +1856,74 @@
             }
         }
 
+        async function fetchMeshStatus() {
+            if (!adminToken) return;
+            try {
+                const res = await adminFetch('/api/admin/mesh/status');
+                if (!res.ok) return;
+                const d = await res.json();
+                const badge = document.getElementById('meshStatusBadge');
+                const roleEl = document.getElementById('meshNodeRoleInfo');
+                const ipEl = document.getElementById('meshIpDnsInfo');
+                const authEl = document.getElementById('meshAuthInfo');
+                const trafficEl = document.getElementById('meshTrafficInfo');
+                const errEl = document.getElementById('meshErrorText');
+                const tbody = document.getElementById('meshPeersBody');
+
+                if (!d.enabled) {
+                    badge.className = 'badge-idle';
+                    badge.innerText = 'Devre Dışı';
+                } else if (d.connected) {
+                    badge.className = 'badge-live';
+                    badge.innerText = '● Mesh Aktif';
+                } else {
+                    badge.className = 'badge-paid';
+                    badge.innerText = d.backend_state || 'Beklemede';
+                }
+
+                roleEl.innerText = `${d.hostname || 'iptv-p2p-node'} | Rol: ${(d.mesh_role || 'hybrid').toUpperCase()} (:${d.mesh_port || 8448}) | Tag: ${d.discovery_tag || 'tag:iptv-mesh'}`;
+                const ips = [d.tailscale_ipv4, d.tailscale_ipv6].filter(Boolean).join(' / ') || 'Henüz atanmadı';
+                ipEl.innerText = d.magic_dns ? `${ips} (${d.magic_dns})` : ips;
+                const authDesc = d.auth_mode === 'static_auth_key'
+                    ? `Sabit Auth Key (${d.secret_mask || 'TS_AUTHKEY'})`
+                    : (d.auth_mode === 'oauth_client_secret'
+                        ? `OAuth Client Secret (${d.secret_mask || 'TS_CLIENT_SECRET'})`
+                        : (d.auth_configured ? 'Yapılandırıldı' : 'Anahtar girilmedi'));
+                authEl.innerText = authDesc + (d.prefer_tailscale_ice ? ' | WebRTC Öncelikli' : '');
+                trafficEl.innerText = `Çekilen: ${((d.bytes_pulled || 0) / 1048576).toFixed(2)} MB | Sunulan: ${((d.bytes_served || 0) / 1048576).toFixed(2)} MB`;
+
+                if (d.last_error) {
+                    errEl.innerText = '⚠️ ' + d.last_error;
+                    errEl.style.display = 'block';
+                } else {
+                    errEl.style.display = 'none';
+                }
+
+                tbody.innerHTML = '';
+                const peers = Array.isArray(d.peers) ? d.peers : [];
+                if (peers.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--muted);">${d.enabled ? 'Aktif Tailscale Mesh düğümü bekleniyor...' : 'config.yaml içinde tailscale.enabled: true yapın'}</td></tr>`;
+                    return;
+                }
+                peers.forEach(p => {
+                    const tr = document.createElement('tr');
+                    const connType = p.direct_p2p ? '<span class="badge-free">Direct P2P</span>' : `<span class="badge-idle">DERP (${escapeHtml(p.relay || 'relay')})</span>`;
+                    const stBadge = p.online ? '<span class="badge-live">Çevrimiçi</span>' : '<span class="badge-idle">Çevrimdışı</span>';
+                    const chCnt = Array.isArray(p.active_channels) ? p.active_channels.length : 0;
+                    const chTitle = chCnt > 0 ? p.active_channels.slice(0, 5).join(', ') : 'Yok';
+                    tr.innerHTML = `
+                        <td><b>${escapeHtml(p.hostname || p.tailscale_ip)}</b></td>
+                        <td><code>${escapeHtml(p.tailscale_ip || '')}</code><br>${connType}</td>
+                        <td>${escapeHtml((p.role || 'unknown').toUpperCase())}</td>
+                        <td>${p.rtt_ms > 0 ? p.rtt_ms + ' ms' : '--'}</td>
+                        <td title="${escapeHtml(chTitle)}">${chCnt} kanal</td>
+                        <td>${stBadge}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {}
+        }
+
         async function fetchAceStreamStatus() {
             if (!adminToken) return;
             try {
@@ -1552,38 +2005,79 @@
             } catch (e) {}
         }
 
+        let lastAceSearchResults = [];
+
+        function updateAceBulkSelectionCount() {
+            const chks = Array.from(document.querySelectorAll('#aceSearchResultsBody .ace-row-chk'));
+            const checkedCount = chks.filter(c => c.checked).length;
+            const lbl = document.getElementById('aceSelectedCountLabel');
+            const btn = document.getElementById('aceBulkAddBtn');
+            const master = document.getElementById('aceSelectAllChk');
+            if (lbl) lbl.innerText = `${checkedCount} / ${chks.length} seçili`;
+            if (btn) {
+                btn.disabled = checkedCount === 0;
+                btn.innerText = `📥 Seçilenleri Toplu Ekle (${checkedCount})`;
+            }
+            if (master) {
+                master.checked = chks.length > 0 && checkedCount === chks.length;
+                master.indeterminate = checkedCount > 0 && checkedCount < chks.length;
+            }
+        }
+
+        function toggleAllAceResults(checked) {
+            document.querySelectorAll('#aceSearchResultsBody .ace-row-chk').forEach(c => {
+                c.checked = !!checked;
+            });
+            updateAceBulkSelectionCount();
+        }
+
+        function selectActiveAceResults() {
+            document.querySelectorAll('#aceSearchResultsBody .ace-row-chk').forEach(c => {
+                c.checked = c.dataset.status === '2';
+            });
+            updateAceBulkSelectionCount();
+        }
+
         document.getElementById('aceSearchForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const q = document.getElementById('aceSearchQuery').value.trim();
             const cat = document.getElementById('aceSearchCategory').value;
+            const limit = document.getElementById('aceSearchLimit') ? document.getElementById('aceSearchLimit').value : '200';
             const fb = document.getElementById('aceSearchFeedback');
             const tbody = document.getElementById('aceSearchResultsBody');
+            const bulkBar = document.getElementById('aceBulkBar');
 
             fb.style.display = 'block';
             fb.innerText = '⏳ ace_engine.exe üzerinden aranıyor...';
-            tbody.innerHTML = '<tr><td colspan="3">Aranıyor...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4">Aranıyor...</td></tr>';
+            if (bulkBar) bulkBar.style.display = 'none';
+            lastAceSearchResults = [];
 
             try {
-                const res = await adminFetch(`/api/admin/acestream/search?q=${encodeURIComponent(q)}&category=${encodeURIComponent(cat)}`);
+                const res = await adminFetch(`/api/admin/acestream/search?q=${encodeURIComponent(q)}&category=${encodeURIComponent(cat)}&page_size=${encodeURIComponent(limit)}`);
                 const data = await res.json();
                 if (!res.ok) {
                     fb.innerText = '❌ Arama hatası: ' + (data.error || res.statusText);
-                    tbody.innerHTML = '<tr><td colspan="3">Sonuç alınamadı.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="4">Sonuç alınamadı.</td></tr>';
                     return;
                 }
                 const items = data.results || [];
+                lastAceSearchResults = items;
                 fb.innerHTML = `✅ <b>${items.length}</b> sonuç bulundu (Toplam eşleşme: ${data.total || items.length}).`;
                 tbody.innerHTML = '';
                 if (items.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="3">Eşleşen AceStream kanalı bulunamadı. Doğrudan <code>acestream://...</code> ID de yapıştırabilirsiniz.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="4">Eşleşen AceStream kanalı bulunamadı. Doğrudan <code>acestream://...</code> ID de yapıştırabilirsiniz.</td></tr>';
                     return;
                 }
-                items.forEach(item => {
+                items.forEach((item, idx) => {
                     const statusTag = item.status === 2
                         ? '<span class="badge-live">Aktif</span>'
                         : '<span class="badge-idle">Belirsiz</span>';
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
+                        <td style="text-align:center;">
+                            <input type="checkbox" class="ace-row-chk" data-idx="${idx}" data-status="${item.status || 0}" checked onchange="updateAceBulkSelectionCount()" style="width:auto;">
+                        </td>
                         <td>
                             <b>${escapeHtml(item.name)}</b>
                             ${item.categories && item.categories.length ? `<br><small style="color:var(--muted);">${escapeHtml(item.categories.join(', '))}</small>` : ''}
@@ -1596,16 +2090,18 @@
                             <button class="btn-inline btn-success btn-ace-add">+ Kanallara Ekle</button>
                         </td>
                     `;
-                    tr.querySelector('.btn-ace-add').addEventListener('click', () => addAceStreamChannel(item));
+                    tr.querySelector('.btn-ace-add').addEventListener('click', (ev) => addAceStreamChannel(item, ev.currentTarget));
                     tbody.appendChild(tr);
                 });
+                if (bulkBar) bulkBar.style.display = 'flex';
+                updateAceBulkSelectionCount();
             } catch (err) {
                 fb.innerText = '❌ Bağlantı hatası: ' + err.message;
-                tbody.innerHTML = '<tr><td colspan="3">Hata oluştu.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4">Hata oluştu.</td></tr>';
             }
         });
 
-        async function addAceStreamChannel(item) {
+        async function addAceStreamChannel(item, btnEl) {
             const tier = document.getElementById('aceAddTier').value;
             try {
                 const res = await adminFetch('/api/admin/acestream/add', {
@@ -1622,12 +2118,65 @@
                     alert('❌ Kanal eklenemedi: ' + (data.error || res.statusText));
                     return;
                 }
+                if (btnEl) {
+                    btnEl.innerText = '✔ Eklendi';
+                    btnEl.disabled = true;
+                }
                 const fb = document.getElementById('aceSearchFeedback');
                 fb.style.display = 'block';
                 fb.innerHTML = `✅ <b>${escapeHtml(item.name)}</b> kanal listesine eklendi! <a href="/player.html?channel_id=${encodeURIComponent(data.channel.id)}" target="_blank" style="color:var(--accent); font-weight:bold;">▶ Oynatıcıda Aç</a>`;
                 fetchStreams();
             } catch (err) {
                 alert('❌ Hata: ' + err.message);
+            }
+        }
+
+        async function bulkAddAceStreamChannels() {
+            const chks = Array.from(document.querySelectorAll('#aceSearchResultsBody .ace-row-chk:checked'));
+            const selectedItems = chks
+                .map(c => lastAceSearchResults[Number(c.dataset.idx)])
+                .filter(Boolean)
+                .map(it => ({ name: it.name, source_url: it.source_url }));
+
+            if (selectedItems.length === 0) return;
+            const tier = document.getElementById('aceAddTier').value;
+            const btn = document.getElementById('aceBulkAddBtn');
+            const fb = document.getElementById('aceSearchFeedback');
+            const prevText = btn ? btn.innerText : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = '⏳ Ekleniyor...';
+            }
+
+            try {
+                const res = await adminFetch('/api/admin/acestream/add-bulk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tier, items: selectedItems })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    alert('❌ Toplu ekleme başarısız: ' + (data.error || res.statusText));
+                    return;
+                }
+                fb.style.display = 'block';
+                fb.innerHTML = `✅ Toplu ekleme tamamlandı: <b>${data.added || 0}</b> kanal eklendi${data.skipped ? `, ${data.skipped} atlandı` : ''}!`;
+                chks.forEach(c => {
+                    const rowBtn = c.closest('tr') ? c.closest('tr').querySelector('.btn-ace-add') : null;
+                    if (rowBtn) {
+                        rowBtn.innerText = '✔ Eklendi';
+                        rowBtn.disabled = true;
+                    }
+                });
+                fetchStreams();
+            } catch (err) {
+                alert('❌ Bağlantı hatası: ' + err.message);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = prevText;
+                }
+                updateAceBulkSelectionCount();
             }
         }
 
@@ -1734,6 +2283,7 @@
             fetchEPGSources();
             fetchEpgChannels();
             fetchAceStreamStatus();
+            fetchMeshStatus();
             fetchBillingSettings();
             fetchBillingOrders();
 
@@ -1742,6 +2292,7 @@
                 setInterval(fetchMetrics, 3000);
                 setInterval(fetchSwarms, 3000);
                 setInterval(fetchAceStreamStatus, 5000);
+                setInterval(fetchMeshStatus, 5000);
                 setInterval(fetchStreams, 10000);
                 setInterval(fetchBillingOrders, 10000);
             }

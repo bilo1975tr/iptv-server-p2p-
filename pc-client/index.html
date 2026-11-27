@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV Cinema — Masaüstü İstemcisi</title>
+    <link rel="manifest" href="/pc/manifest.webmanifest">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        :root {
+            --bg-canvas: #0b0f17;
+            --bg-surface: #111827;
+            --bg-elevated: #172033;
+            --bg-hover: #1e293b;
+            --border-hairline: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.16);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent: #0ea5e9;
+            --accent-hover: #38bdf8;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #dc2626;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-canvas);
+            color: var(--text-primary);
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .tabular {
+            font-variant-numeric: tabular-nums;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        button, input, select {
+            font-family: inherit;
+            color: inherit;
+        }
+
+        button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible {
+            outline: 2px solid var(--accent-hover);
+            outline-offset: 2px;
+        }
+
+        /* 3-Zone Top Navigation Contract */
+        .topbar {
+            height: 58px;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 32px;
+            border-bottom: 1px solid var(--border-hairline);
+            background: var(--bg-surface);
+            flex-shrink: 0;
+        }
+
+        .brand-wordmark {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+            text-decoration: none;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .top-nav {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .top-nav a, .top-nav button {
+            background: none;
+            border: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-decoration: none;
+            cursor: pointer;
+            padding: 4px 0;
+            border-bottom: 2px solid transparent;
+            transition: color 0.16s ease, border-color 0.16s ease;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .top-nav a:hover, .top-nav button:hover, .top-nav a.active {
+            color: var(--text-primary);
+            border-bottom-color: var(--accent);
+        }
+
+        .topbar-cta {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-strong);
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            font-size: 0.825rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+            transition: background-color 0.16s ease, border-color 0.16s ease;
+        }
+
+        .topbar-cta:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #04111d;
+        }
+
+        /* Main Desktop Workspace */
+        .workspace {
+            flex: 1;
+            display: flex;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .workspace.theater-mode .channel-rail,
+        .workspace.theater-mode .epg-rail {
+            display: none;
+        }
+
+        /* Left Sidebar: Channel Directory */
+        .channel-rail {
+            width: 300px;
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border-hairline);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            min-height: 0;
+        }
+
+        .rail-controls {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-hairline);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .input-field, .select-field {
+            width: 100%;
+            height: 38px;
+            padding: 0 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-hairline);
+            background: var(--bg-canvas);
+            color: var(--text-primary);
+            font-size: 0.85rem;
+        }
+
+        .input-field:focus, .select-field:focus {
+            border-color: var(--accent);
+            outline: none;
+        }
+
+        .segmented-tabs {
+            display: flex;
+            gap: 4px;
+            padding: 4px;
+            background: var(--bg-canvas);
+            border-radius: 8px;
+            border: 1px solid var(--border-hairline);
+            overflow-x: auto;
+        }
+
+        .seg-btn {
+            flex: 1;
+            padding: 6px 8px;
+            border: none;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+
+        .seg-btn.active {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+
+        .channel-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 12px 16px;
+        }
+
+        .ch-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 10px;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: background-color 0.14s ease, border-color 0.14s ease;
+        }
+
+        .ch-row:hover {
+            background: var(--bg-elevated);
+        }
+
+        .ch-row.active {
+            background: rgba(14, 165, 233, 0.12);
+            border-color: rgba(14, 165, 233, 0.45);
+        }
+
+        .ch-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            background: var(--bg-canvas);
+            border: 1px solid var(--border-hairline);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: var(--accent-hover);
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .ch-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .ch-body {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .ch-title {
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .ch-meta {
+            font-size: 0.74rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 2px;
+        }
+
+        .fav-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1rem;
+            cursor: pointer;
+            padding: 4px;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+
+        .fav-btn.starred {
+            color: #f59e0b;
+        }
+
+        /* Center Stage: Video + Transport Deck */
+        .stage-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            min-height: 0;
+            background: #06090f;
+        }
+
+        .stage-header {
+            padding: 14px 24px;
+            border-bottom: 1px solid var(--border-hairline);
+            background: var(--bg-canvas);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .stage-title-group {
+            min-width: 0;
+        }
+
+        .stage-channel-name {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .stage-subline {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 2px;
+        }
+
+        .stage-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .btn-quiet {
+            height: 36px;
+            padding: 0 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border-hairline);
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background-color 0.15s ease, border-color 0.15s ease;
+        }
+
+        .btn-quiet:hover {
+            background: var(--bg-elevated);
+            border-color: var(--border-strong);
+        }
+
+        .btn-live-return {
+            height: 36px;
+            padding: 0 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(220, 38, 38, 0.6);
+            background: rgba(220, 38, 38, 0.16);
+            color: #fecaca;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            display: none;
+        }
+
+        .video-stage {
+            flex: 1;
+            position: relative;
+            min-height: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .stage-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(6, 9, 15, 0.88);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 32px;
+            gap: 12px;
+        }
+
+        .stage-overlay h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.35rem;
+            font-weight: 600;
+        }
+
+        .stage-overlay p {
+            color: var(--text-secondary);
+            max-width: 440px;
+        }
+
+        /* Transport Deck below Video */
+        .transport-deck {
+            padding: 10px 20px;
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border-hairline);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-shrink: 0;
+        }
+
+        .deck-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .deck-btn {
+            height: 34px;
+            padding: 0 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-hairline);
+            background: var(--bg-canvas);
+            color: var(--text-primary);
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .deck-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent-hover);
+        }
+
+        .vol-slider {
+            width: 90px;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        /* Right Rail: DVR-Synced EPG + Connection Metrics */
+        .epg-rail {
+            width: 340px;
+            background: var(--bg-surface);
+            border-left: 1px solid var(--border-hairline);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            min-height: 0;
+        }
+
+        .epg-section {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-hairline);
+        }
+
+        .section-heading {
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .epg-now-block {
+            padding: 12px;
+            background: var(--bg-canvas);
+            border: 1px solid var(--border-hairline);
+            border-radius: 8px;
+        }
+
+        .epg-time-row {
+            font-size: 0.75rem;
+            color: var(--accent-hover);
+            font-weight: 600;
+        }
+
+        .epg-show-name {
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-top: 4px;
+            color: var(--text-primary);
+        }
+
+        .epg-show-desc {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            margin-top: 6px;
+        }
+
+        .epg-next-row {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-hairline);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .schedule-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
+        }
+
+        .sched-item {
+            padding: 9px 10px;
+            border-bottom: 1px solid var(--border-hairline);
+            cursor: pointer;
+            transition: background-color 0.14s ease;
+            border-radius: 6px;
+        }
+
+        .sched-item:hover {
+            background: var(--bg-elevated);
+        }
+
+        .sched-item.is-current {
+            background: rgba(14, 165, 233, 0.12);
+        }
+
+        .sched-time {
+            font-size: 0.74rem;
+            color: var(--text-secondary);
+        }
+
+        .sched-title {
+            font-size: 0.84rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 2px;
+        }
+
+        .metrics-compact {
+            padding: 14px 16px;
+            border-top: 1px solid var(--border-hairline);
+            background: var(--bg-canvas);
+            font-size: 0.78rem;
+        }
+
+        .kv-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+        }
+
+        .kv-label {
+            color: var(--text-secondary);
+        }
+
+        .kv-val {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Modals */
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 7, 13, 0.78);
+            backdrop-filter: blur(6px);
+            z-index: 60;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-panel {
+            width: 100%;
+            max-width: 460px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-strong);
+            border-radius: 12px;
+            padding: 24px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .modal-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 700;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .btn-accent {
+            width: 100%;
+            height: 40px;
+            border-radius: 8px;
+            border: none;
+            background: var(--accent);
+            color: #04111d;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-accent:hover {
+            background: var(--accent-hover);
+        }
+
+        .shortcut-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+            font-size: 0.78rem;
+        }
+
+        .shortcut-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 8px;
+            background: var(--bg-canvas);
+            border-radius: 6px;
+            border: 1px solid var(--border-hairline);
+        }
+
+        .toast-msg {
+            position: fixed;
+            bottom: 72px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            display: none;
+            z-index: 80;
+        }
+
+        @media (max-width: 1120px) {
+            .epg-rail { width: 290px; }
+            .channel-rail { width: 260px; }
+        }
+
+        @media (max-width: 860px) {
+            body { height: auto; overflow: auto; }
+            .workspace { flex-direction: column; overflow: visible; }
+            .channel-rail, .epg-rail { width: 100%; max-height: 360px; border: none; border-bottom: 1px solid var(--border-hairline); }
+            .video-stage { min-height: 280px; }
+        }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <a href="/pc/" class="brand-wordmark">IPTV Cinema PC</a>
+        <nav class="top-nav" aria-label="İstemci Gezinmesi">
+            <a href="/pc/" class="active">Canlı Yayın</a>
+            <a href="/multiview.html">Çoklu Ekran</a>
+            <a href="/tv/" id="tvModeNavLink">TV Modu</a>
+            <button type="button" onclick="openSettingsModal()">Ayarlar</button>
+            <a href="/admin/" id="adminPanelLink" style="display:none;">Admin Paneli</a>
+        </nav>
+        <button type="button" id="authTopBtn" class="topbar-cta" onclick="openAuthModal()">Giriş Yap</button>
+    </header>
+
+    <main class="workspace" id="workspaceRoot">
+        <!-- Left Sidebar: Channel Directory -->
+        <aside class="channel-rail">
+            <div class="rail-controls">
+                <input type="text" id="searchInput" class="input-field" aria-label="Kanal veya program ara" placeholder="Kanal veya program ara (/)">
+                <select id="sortSelect" class="select-field" aria-label="Kanal sıralama" onchange="renderChannels()">
+                    <option value="viewers_desc">İzleyici (Çoktan Aza)</option>
+                    <option value="name_asc">İsim (A - Z)</option>
+                    <option value="name_desc">İsim (Z - A)</option>
+                    <option value="fav_first">Önce Favoriler</option>
+                    <option value="free_first">Önce Ücretsiz</option>
+                    <option value="paid_first">Önce Ücretli</option>
+                </select>
+                <div class="segmented-tabs" id="filterTabs" role="tablist">
+                    <button type="button" class="seg-btn active" data-filter="all" onclick="setFilter('all')">Tümü</button>
+                    <button type="button" class="seg-btn" id="favTabBtn" data-filter="favorites" onclick="setFilter('favorites')">Favori</button>
+                    <button type="button" class="seg-btn" data-filter="free" onclick="setFilter('free')">Ücretsiz</button>
+                    <button type="button" class="seg-btn" data-filter="paid" onclick="setFilter('paid')">Ücretli</button>
+                    <button type="button" class="seg-btn" data-filter="acestream" onclick="setFilter('acestream')">Ace</button>
+                </div>
+            </div>
+            <div class="channel-scroll" id="channelList">
+                <div style="padding:20px; text-align:center; color:var(--text-secondary);">Kanallar yükleniyor...</div>
+            </div>
+        </aside>
+
+        <!-- Center Stage: Video Player + Transport Controls -->
+        <section class="stage-column">
+            <div class="stage-header">
+                <div class="stage-title-group">
+                    <h1 class="stage-channel-name" id="activeChTitle">Kanal Seçiliyor...</h1>
+                    <div class="stage-subline" id="activeChMeta">
+                        <span>Canlı Yayın</span>
+                        <span aria-hidden="true">·</span>
+                        <span id="metaTier">Ücretsiz</span>
+                        <span aria-hidden="true">·</span>
+                        <span id="metaViewers" class="tabular">0 izleyici</span>
+                        <span aria-hidden="true">·</span>
+                        <span id="metaTransport">HLS P2P DVR</span>
+                    </div>
+                </div>
+                <div class="stage-actions">
+                    <button type="button" id="liveReturnBtn" class="btn-live-return tabular" onclick="jumpToLiveEdge()">Canlıya Dön</button>
+                    <button type="button" class="btn-quiet" onclick="copyStreamUrl()">VLC Bağlantısı</button>
+                    <button type="button" class="btn-quiet" onclick="toggleTheaterMode()">Tiyatro (T)</button>
+                </div>
+            </div>
+
+            <div class="video-stage">
+                <video id="videoPlayer" controls autoplay muted playsinline></video>
+                <div class="stage-overlay" id="stageOverlay">
+                    <h2 id="overlayHeading">Yayın Hazırlanıyor</h2>
+                    <p id="overlayBody">Bağlantı kuruluyor...</p>
+                    <button type="button" id="overlayActionBtn" class="topbar-cta" style="display:none;" onclick="openAuthModal()">Hesap / Abonelik</button>
+                </div>
+            </div>
+
+            <div class="transport-deck">
+                <div class="deck-group">
+                    <button type="button" class="deck-btn" id="playPauseBtn" onclick="togglePlayPause()">Duraklat</button>
+                    <button type="button" class="deck-btn tabular" onclick="seekRelative(-300)">-5 dk</button>
+                    <button type="button" class="deck-btn tabular" onclick="seekRelative(-10)">-10 sn</button>
+                    <button type="button" class="deck-btn tabular" onclick="seekRelative(10)">+10 sn</button>
+                </div>
+                <div class="deck-group">
+                    <button type="button" class="deck-btn" id="muteBtn" onclick="toggleMute()">Ses Aç/Kapat</button>
+                    <input type="range" id="volRange" class="vol-slider" min="0" max="1" step="0.05" value="1" aria-label="Ses düzeyi" oninput="setVolume(this.value)">
+                    <button type="button" class="deck-btn" onclick="captureSnapshot()">Kare Yakala</button>
+                    <button type="button" class="deck-btn" onclick="togglePiP()">PiP</button>
+                    <button type="button" class="deck-btn" onclick="toggleFullscreen()">Tam Ekran</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Rail: DVR-Synced EPG + P2P Metrics -->
+        <aside class="epg-rail">
+            <div class="epg-section">
+                <div class="section-heading">
+                    <span id="epgBoxHeading">Canlı TV Rehberi</span>
+                    <span id="epgClockLabel" class="tabular" style="font-size:0.75rem; color:var(--text-secondary);">--:--</span>
+                </div>
+                <div class="epg-now-block">
+                    <div class="epg-time-row tabular" id="epgCurrTime">--:-- - --:--</div>
+                    <div class="epg-show-name" id="epgCurrTitle">Yayın bilgisi yükleniyor...</div>
+                    <div class="epg-show-desc" id="epgCurrDesc"></div>
+                    <div class="epg-next-row" id="epgNextRow">Sonraki: --</div>
+                </div>
+            </div>
+
+            <div class="schedule-list" id="epgScheduleList">
+                <div style="padding:12px; color:var(--text-secondary); font-size:0.8rem;">26 saatlik DVR ve yaklaşan yayın akışı burada listelenir.</div>
+            </div>
+
+            <div class="metrics-compact">
+                <div class="kv-row">
+                    <span class="kv-label">P2P Tasarruf</span>
+                    <span class="kv-val tabular" id="statOffload">%0 (0 B)</span>
+                </div>
+                <div class="kv-row">
+                    <span class="kv-label">Swarm Eşleri</span>
+                    <span class="kv-val tabular" id="statPeers">1 Peer (0 WebRTC)</span>
+                </div>
+                <div class="kv-row">
+                    <span class="kv-label">İstemci DVR Tamponu</span>
+                    <span class="kv-val tabular" id="statDvr">0 dk (0 B)</span>
+                </div>
+                <div class="kv-row">
+                    <span class="kv-label">Codec · Gecikme</span>
+                    <span class="kv-val tabular" id="statLatency">-- ms</span>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Settings & Keyboard Shortcuts Modal -->
+    <div id="settingsModal" class="modal-backdrop" onclick="if(event.target===this) closeSettingsModal()">
+        <div class="modal-panel">
+            <div class="modal-header">
+                <div class="modal-title">Masaüstü İstemci Ayarları</div>
+                <button type="button" class="deck-btn" onclick="closeSettingsModal()">Kapat</button>
+            </div>
+            <div class="form-group">
+                <label for="serverUrlInput">Sunucu Adresi (Yerel veya Tailscale IP)</label>
+                <input type="text" id="serverUrlInput" class="input-field" placeholder="http://localhost:8080">
+            </div>
+            <div class="form-group">
+                <label for="pcUploadLimit">P2P Upload Kotası (Free %35 + Paid %40 = Maks %75)</label>
+                <select id="pcUploadLimit" class="select-field" onchange="changeUploadProfile(this.value)">
+                    <option value="auto">Otomatik (WebRTC Tahmini)</option>
+                    <option value="5">5 Mbps (3.75 Mbps P2P)</option>
+                    <option value="10">10 Mbps (7.5 Mbps P2P)</option>
+                    <option value="25">25 Mbps (18.75 Mbps P2P)</option>
+                    <option value="50">50 Mbps (37.5 Mbps P2P)</option>
+                    <option value="100">100 Mbps (75 Mbps P2P)</option>
+                </select>
+            </div>
+            <button type="button" class="btn-accent" onclick="saveClientSettings()">Kaydet ve Yeniden Bağlan</button>
+
+            <div style="margin-top:18px;">
+                <div style="font-size:0.82rem; font-weight:600; color:var(--text-secondary);">Klavye Kısayolları</div>
+                <div class="shortcut-grid">
+                    <div class="shortcut-row"><span>Oynat / Duraklat</span><span class="tabular">Space / K</span></div>
+                    <div class="shortcut-row"><span>Tam Ekran</span><span class="tabular">F</span></div>
+                    <div class="shortcut-row"><span>PiP Pencere</span><span class="tabular">P</span></div>
+                    <div class="shortcut-row"><span>Tiyatro Modu</span><span class="tabular">T</span></div>
+                    <div class="shortcut-row"><span>10 sn Geri / İleri</span><span class="tabular">← / →</span></div>
+                    <div class="shortcut-row"><span>5 dk Geri / İleri</span><span class="tabular">Shift + ←/→</span></div>
+                    <div class="shortcut-row"><span>Kanal Değiştir</span><span class="tabular">↑ / ↓</span></div>
+                    <div class="shortcut-row"><span>Canlıya Dön</span><span class="tabular">L</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Account / Auth Modal -->
+    <div id="authModal" class="modal-backdrop" onclick="if(event.target===this) closeAuthModal()">
+        <div class="modal-panel">
+            <div class="modal-header">
+                <div class="modal-title">Hesap ve Abonelik</div>
+                <button type="button" class="deck-btn" onclick="closeAuthModal()">Kapat</button>
+            </div>
+
+            <div id="authProfileView" style="display:none;">
+                <div class="epg-now-block" style="margin-bottom:14px;">
+                    <div style="font-size:0.78rem; color:var(--text-secondary);">Oturum</div>
+                    <div id="profileName" style="font-size:1.05rem; font-weight:700; margin-top:2px;">-</div>
+                    <div id="profileTier" style="font-size:0.82rem; margin-top:4px; color:var(--accent-hover);">-</div>
+                </div>
+                <a href="/admin/" id="profileAdminBtn" class="btn-accent" style="display:none; text-align:center; line-height:40px; text-decoration:none; margin-bottom:10px;">Admin Paneline Git</a>
+                <button type="button" class="btn-quiet" style="width:100%; border-color:rgba(220,38,38,0.5); color:#fecaca;" onclick="logoutAccount()">Çıkış Yap</button>
+            </div>
+
+            <div id="authFormView">
+                <div class="segmented-tabs" style="margin-bottom:14px;">
+                    <button type="button" class="seg-btn active" id="tabLogin" onclick="switchAuthMode('login')">Giriş Yap</button>
+                    <button type="button" class="seg-btn" id="tabReg" onclick="switchAuthMode('register')">Kayıt Ol</button>
+                </div>
+                <form id="pcLoginForm">
+                    <div class="form-group">
+                        <label for="pcLoginUser">Kullanıcı Adı</label>
+                        <input type="text" id="pcLoginUser" class="input-field" required autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="pcLoginPass">Şifre</label>
+                        <input type="password" id="pcLoginPass" class="input-field" required autocomplete="current-password">
+                    </div>
+                    <div id="pcAuthError" style="color:#fca5a5; font-size:0.8rem; margin-bottom:10px; display:none;"></div>
+                    <button type="submit" class="btn-accent" id="pcAuthSubmitBtn">Giriş Yap</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastMsg" class="toast-msg"></div>
+
+    <script src="/pc/pc-app.js?v=4"></script>
+</body>
+</html>

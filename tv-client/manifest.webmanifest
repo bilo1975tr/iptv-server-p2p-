@@ -1,0 +1,11 @@
+{
+  "name": "IPTV Cinema — Smart TV İstemcisi",
+  "short_name": "IPTV TV",
+  "description": "Kumanda (D-Pad) uyumlu, 24 saat DVR EPG senkronlu Smart TV IPTV P2P oynatıcısı",
+  "start_url": "/tv/",
+  "scope": "/tv/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#05080f",
+  "theme_color": "#05080f"
+}

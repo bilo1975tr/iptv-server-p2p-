@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"iptv-p2p-server/internal/acestream"
 	"iptv-p2p-server/internal/auth"
 	"iptv-p2p-server/internal/epg"
+	"iptv-p2p-server/internal/mesh"
 	"iptv-p2p-server/internal/metrics"
 	"iptv-p2p-server/internal/playlist"
 	"iptv-p2p-server/internal/storage"
@@ -91,6 +93,7 @@ type AdminAPI struct {
 	authManager       *auth.AuthManager
 	tracker           *tracker.SwarmTracker
 	aceManager        *acestream.Manager
+	meshManager       *mesh.Manager
 	streams           map[string]StreamRequest
 	normalizedMap     map[string]string // normalized_name -> stream_id
 	m3uSources        []storage.M3USource
@@ -124,6 +127,12 @@ func (api *AdminAPI) SetAceStreamManager(mgr *acestream.Manager) {
 	api.mu.Lock()
 	defer api.mu.Unlock()
 	api.aceManager = mgr
+}
+
+func (api *AdminAPI) SetMeshManager(mgr *mesh.Manager) {
+	api.mu.Lock()
+	defer api.mu.Unlock()
+	api.meshManager = mgr
 }
 
 func isStreamAce(s StreamRequest) bool {
@@ -573,6 +582,10 @@ func (api *AdminAPI) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/admin/acestream/stop", api.requireAdmin(api.handleAceStreamStop))
 	mux.HandleFunc("/api/admin/acestream/search", api.requireAdmin(api.handleAceStreamSearch))
 	mux.HandleFunc("/api/admin/acestream/add", api.requireAdmin(api.handleAceStreamAdd))
+	mux.HandleFunc("/api/admin/acestream/add-bulk", api.requireAdmin(api.handleAceStreamBulkAdd))
+
+	// Tailscale Mesh Status
+	mux.HandleFunc("/api/admin/mesh/status", api.requireAdmin(api.handleMeshStatus))
 
 	// User Auth, USDT Auto-Billing, Favorites & Live Viewers
 	api.registerUserBillingRoutes(mux)
@@ -911,6 +924,221 @@ func (api *AdminAPI) handleUpdateStream(w http.ResponseWriter, r *http.Request) 
 	_ = json.NewEncoder(w).Encode(map[string]string{"status": "success", "message": "Stream updated successfully"})
 }
 
+type m3uFetchTask struct {
+	URL         string
+	ContentType string
+}
+
+type m3uFetchResult struct {
+	SourceURL   string
+	ContentType string
+	Channels    []playlist.ChannelItem
+	PrunedCount int
+	Err         error
+}
+
+func mapBundleCategoryToContentType(key, fallback string) string {
+	switch strings.ToLower(strings.TrimSpace(key)) {
+	case "tv", "live", "canli", "canlı tv", "channels":
+		return "Canlı TV"
+	case "film", "filmler", "movie", "movies", "vod":
+		return "Filmler"
+	case "dizi", "diziler", "series", "show", "shows":
+		return "Diziler"
+	case "radyo", "radio":
+		return "Radyo"
+	case "karma", "mixed", "mix":
+		return "Karma"
+	default:
+		if strings.TrimSpace(fallback) != "" {
+			return fallback
+		}
+		return "Canlı TV"
+	}
+}
+
+func isHTTPURL(s string) bool {
+	low := strings.ToLower(strings.TrimSpace(s))
+	return strings.HasPrefix(low, "http://") || strings.HasPrefix(low, "https://")
+}
+
+func parseM3UBundleInput(rawText, defaultContentType string) (m3uTasks []m3uFetchTask, epgURLs []string, isBatch bool) {
+	trimmed := strings.TrimSpace(rawText)
+	if trimmed == "" {
+		return nil, nil, false
+	}
+
+	seenM3U := make(map[string]bool)
+	seenEPG := make(map[string]bool)
+	addM3U := func(u, ct string) {
+		u = strings.TrimSpace(u)
+		if !isHTTPURL(u) || seenM3U[u] {
+			return
+		}
+		seenM3U[u] = true
+		m3uTasks = append(m3uTasks, m3uFetchTask{URL: u, ContentType: ct})
+	}
+	addEPG := func(u string) {
+		u = strings.TrimSpace(u)
+		if !isHTTPURL(u) || seenEPG[u] {
+			return
+		}
+		seenEPG[u] = true
+		epgURLs = append(epgURLs, u)
+	}
+
+	if strings.HasPrefix(trimmed, "{") {
+		var obj map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(trimmed), &obj); err == nil && len(obj) > 0 {
+			// Deterministic category ordering
+			preferredOrder := []string{"tv", "film", "dizi", "radyo", "karma", "epg"}
+			visited := make(map[string]bool)
+			processKey := func(k string, rawVal json.RawMessage) {
+				var urls []string
+				if err := json.Unmarshal(rawVal, &urls); err != nil {
+					return
+				}
+				if strings.EqualFold(strings.TrimSpace(k), "epg") {
+					for _, u := range urls {
+						addEPG(u)
+					}
+					return
+				}
+				ct := mapBundleCategoryToContentType(k, defaultContentType)
+				for _, u := range urls {
+					addM3U(u, ct)
+				}
+			}
+			for _, k := range preferredOrder {
+				for actualKey, rawVal := range obj {
+					if strings.EqualFold(actualKey, k) && !visited[actualKey] {
+						visited[actualKey] = true
+						processKey(actualKey, rawVal)
+					}
+				}
+			}
+			for actualKey, rawVal := range obj {
+				if !visited[actualKey] {
+					processKey(actualKey, rawVal)
+				}
+			}
+			if len(m3uTasks) > 0 || len(epgURLs) > 0 {
+				return m3uTasks, epgURLs, true
+			}
+		}
+	}
+
+	if strings.HasPrefix(trimmed, "[") {
+		var arr []string
+		if err := json.Unmarshal([]byte(trimmed), &arr); err == nil && len(arr) > 0 {
+			ct := mapBundleCategoryToContentType("", defaultContentType)
+			for _, u := range arr {
+				addM3U(u, ct)
+			}
+			if len(m3uTasks) > 0 {
+				return m3uTasks, nil, true
+			}
+		}
+	}
+
+	// Check for multi-line list of URLs (not raw #EXTM3U/#EXTINF content)
+	upperHead := strings.ToUpper(trimmed)
+	if !strings.Contains(upperHead, "#EXTM3U") && !strings.Contains(upperHead, "#EXTINF") {
+		lines := strings.Split(trimmed, "\n")
+		var urlCandidates []string
+		allURLs := true
+		for _, line := range lines {
+			clean := strings.TrimSpace(line)
+			clean = strings.Trim(clean, "\",")
+			clean = strings.TrimSpace(clean)
+			if clean == "" {
+				continue
+			}
+			if isHTTPURL(clean) {
+				urlCandidates = append(urlCandidates, clean)
+			} else {
+				allURLs = false
+				break
+			}
+		}
+		if allURLs && len(urlCandidates) > 1 {
+			ct := mapBundleCategoryToContentType("", defaultContentType)
+			for _, u := range urlCandidates {
+				addM3U(u, ct)
+			}
+			return m3uTasks, nil, true
+		}
+	}
+
+	return nil, nil, false
+}
+
+func fetchM3UChannelsFromURL(client *http.Client, targetURL, contentType string, autoPrune bool) m3uFetchResult {
+	res := m3uFetchResult{
+		SourceURL:   targetURL,
+		ContentType: contentType,
+	}
+
+	if playlist.IsDirectMediaURL(targetURL) {
+		item := playlist.BuildSingleChannelItem(targetURL, contentType)
+		if autoPrune {
+			if playlist.ProbeStreamWithClient(client, targetURL) {
+				res.Channels = []playlist.ChannelItem{item}
+			} else {
+				res.PrunedCount = 1
+			}
+		} else {
+			res.Channels = []playlist.ChannelItem{item}
+		}
+		return res
+	}
+
+	req, err := http.NewRequest(http.MethodGet, targetURL, nil)
+	if err != nil {
+		res.Err = err
+		return res
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+	req.Header.Set("Accept", "*/*")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		res.Err = fmt.Errorf("Failed to download M3U URL: %w", err)
+		return res
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
+		res.Err = fmt.Errorf("M3U URL returned HTTP %d", resp.StatusCode)
+		return res
+	}
+
+	ctHeader := strings.ToLower(resp.Header.Get("Content-Type"))
+	if strings.HasPrefix(ctHeader, "video/") || strings.HasPrefix(ctHeader, "audio/") {
+		item := playlist.BuildSingleChannelItem(targetURL, contentType)
+		res.Channels = []playlist.ChannelItem{item}
+		return res
+	}
+
+	b, readErr := io.ReadAll(io.LimitReader(resp.Body, 32*1024*1024))
+	if readErr != nil {
+		res.Err = fmt.Errorf("Failed to read M3U response body: %w", readErr)
+		return res
+	}
+	bodyText := string(b)
+
+	if playlist.IsHLSStreamPlaylist(bodyText) {
+		item := playlist.BuildSingleChannelItem(targetURL, contentType)
+		res.Channels = []playlist.ChannelItem{item}
+		return res
+	}
+
+	liveChannels, prunedCount := playlist.ImportAndPruneM3U(bodyText, autoPrune)
+	res.Channels = liveChannels
+	res.PrunedCount = prunedCount
+	return res
+}
+
 func (api *AdminAPI) handleM3UImport(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -935,58 +1163,122 @@ func (api *AdminAPI) handleM3UImport(w http.ResponseWriter, r *http.Request) {
 	if req.Tier == "" {
 		req.Tier = auth.TierFree
 	}
-
-	m3uSourceURL := ""
-	m3uText := strings.TrimSpace(req.M3UContent)
-	if strings.HasPrefix(m3uText, "http://") || strings.HasPrefix(m3uText, "https://") {
-		m3uSourceURL = m3uText
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: req.InsecureTLS},
-		}
-		client := &http.Client{Transport: tr, Timeout: 30 * time.Second}
-		resp, fetchErr := client.Get(m3uText)
-		if fetchErr != nil {
-			http.Error(w, fmt.Sprintf("Failed to download M3U URL: %v", fetchErr), http.StatusBadGateway)
-			return
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode < 200 || resp.StatusCode >= 400 {
-			http.Error(w, fmt.Sprintf("M3U URL returned HTTP %d", resp.StatusCode), http.StatusBadGateway)
-			return
-		}
-		b, readErr := io.ReadAll(io.LimitReader(resp.Body, 32*1024*1024))
-		if readErr != nil {
-			http.Error(w, "Failed to read M3U response body", http.StatusBadGateway)
-			return
-		}
-		m3uText = string(b)
+	if req.ContentType == "" {
+		req.ContentType = "Canlı TV"
 	}
 
-	liveChannels, prunedCount := playlist.ImportAndPruneM3U(m3uText, req.AutoPrune)
+	tr := &http.Transport{
+		MaxIdleConns:        64,
+		MaxIdleConnsPerHost: 8,
+		IdleConnTimeout:     20 * time.Second,
+		TLSClientConfig:     &tls.Config{InsecureSkipVerify: req.InsecureTLS},
+	}
+	client := &http.Client{Transport: tr, Timeout: 25 * time.Second}
+
+	m3uText := strings.TrimSpace(req.M3UContent)
+	m3uTasks, epgURLs, isBatch := parseM3UBundleInput(m3uText, req.ContentType)
+
+	var results []m3uFetchResult
+	var failedURLs []string
+	prunedCount := 0
+
+	if isBatch {
+		results = make([]m3uFetchResult, len(m3uTasks))
+		var wg sync.WaitGroup
+		sem := make(chan struct{}, 8)
+		for i, task := range m3uTasks {
+			wg.Add(1)
+			go func(idx int, t m3uFetchTask) {
+				defer wg.Done()
+				sem <- struct{}{}
+				defer func() { <-sem }()
+				results[idx] = fetchM3UChannelsFromURL(client, t.URL, t.ContentType, req.AutoPrune)
+			}(i, task)
+		}
+		wg.Wait()
+	} else if isHTTPURL(m3uText) {
+		singleRes := fetchM3UChannelsFromURL(client, m3uText, req.ContentType, req.AutoPrune)
+		if singleRes.Err != nil {
+			http.Error(w, singleRes.Err.Error(), http.StatusBadGateway)
+			return
+		}
+		results = []m3uFetchResult{singleRes}
+	} else {
+		liveChannels, pruned := playlist.ImportAndPruneM3U(m3uText, req.AutoPrune)
+		results = []m3uFetchResult{{
+			ContentType: req.ContentType,
+			Channels:    liveChannels,
+			PrunedCount: pruned,
+		}}
+	}
+
+	var allLiveChannels []playlist.ChannelItem
+	for _, res := range results {
+		prunedCount += res.PrunedCount
+		if res.Err != nil {
+			failedURLs = append(failedURLs, res.SourceURL)
+			continue
+		}
+		allLiveChannels = append(allLiveChannels, res.Channels...)
+	}
+
+	epgAddedCount := 0
+	var epgFailedURLs []string
+	if len(epgURLs) > 0 {
+		existingEPG := epg.GlobalEPG.GetSources()
+		existingEPGURLs := make(map[string]bool, len(existingEPG))
+		for _, u := range existingEPG {
+			existingEPGURLs[strings.TrimSpace(u)] = true
+		}
+		var epgMu sync.Mutex
+		var epgWg sync.WaitGroup
+		epgSem := make(chan struct{}, 3)
+		for idx, epgURL := range epgURLs {
+			if existingEPGURLs[epgURL] {
+				continue
+			}
+			epgWg.Add(1)
+			go func(i int, u string) {
+				defer epgWg.Done()
+				epgSem <- struct{}{}
+				defer func() { <-epgSem }()
+				epgID := fmt.Sprintf("bundle_epg_%d_%d", time.Now().UnixNano(), i)
+				_, _, epgErr := epg.GlobalEPG.AddSource(epgID, u, 999)
+				epgMu.Lock()
+				if epgErr != nil {
+					epgFailedURLs = append(epgFailedURLs, u)
+				} else {
+					epgAddedCount++
+				}
+				epgMu.Unlock()
+			}(idx, epgURL)
+		}
+		epgWg.Wait()
+	}
 
 	addedCount := 0
 	mergedCount := 0
 	skippedDeletedCount := 0
+	dedupedURLCount := 0
 	var upserts []StreamRequest
 
 	api.mu.Lock()
-	if m3uSourceURL != "" {
-		found := false
-		for _, src := range api.m3uSources {
-			if src.URL == m3uSourceURL {
-				found = true
-				break
-			}
+	existingM3U := make(map[string]bool, len(api.m3uSources))
+	for _, src := range api.m3uSources {
+		existingM3U[src.URL] = true
+	}
+	for _, res := range results {
+		if res.Err != nil || res.SourceURL == "" || existingM3U[res.SourceURL] {
+			continue
 		}
-		if !found {
-			api.m3uSources = append(api.m3uSources, storage.M3USource{
-				ID:          fmt.Sprintf("m3u_%d", time.Now().UnixNano()),
-				URL:         m3uSourceURL,
-				Language:    req.Language,
-				ContentType: req.ContentType,
-				AutoPrune:   req.AutoPrune,
-			})
-		}
+		existingM3U[res.SourceURL] = true
+		api.m3uSources = append(api.m3uSources, storage.M3USource{
+			ID:          fmt.Sprintf("m3u_%d", time.Now().UnixNano()),
+			URL:         res.SourceURL,
+			Language:    req.Language,
+			ContentType: res.ContentType,
+			AutoPrune:   req.AutoPrune,
+		})
 	}
 
 	// Build canonical URL ownership map so identical stream URLs never create duplicate channels
@@ -999,8 +1291,7 @@ func (api *AdminAPI) handleM3UImport(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	dedupedURLCount := 0
-	for _, ch := range liveChannels {
+	for _, ch := range allLiveChannels {
 		if api.deletedChannelIDs[ch.ID] {
 			skippedDeletedCount++
 			continue
@@ -1022,7 +1313,7 @@ func (api *AdminAPI) handleM3UImport(w http.ResponseWriter, r *http.Request) {
 			}
 			dedupedURLCount++
 			mergedCount++
-		} else if existingID, found := api.normalizedMap[normName]; found {
+		} else if existingID, found := api.normalizedMap[normName]; found && normName != "" {
 			existingStream := api.streams[existingID]
 			existingStream.SourceURLs = uniqueStrings(append([]string{existingStream.SourceURL}, append(existingStream.SourceURLs, ch.SourceURL)...))
 			if len(existingStream.SourceURLs) > 0 {
@@ -1047,7 +1338,9 @@ func (api *AdminAPI) handleM3UImport(w http.ResponseWriter, r *http.Request) {
 				LogoURL:    ch.Logo,
 			}
 			api.streams[ch.ID] = streamReq
-			api.normalizedMap[normName] = ch.ID
+			if normName != "" {
+				api.normalizedMap[normName] = ch.ID
+			}
 			if canonURL != "" {
 				urlOwner[canonURL] = ch.ID
 			}
@@ -1073,7 +1366,10 @@ func (api *AdminAPI) handleM3UImport(w http.ResponseWriter, r *http.Request) {
 		"pruned_count":      prunedCount,
 		"skipped_deleted":   skippedDeletedCount,
 		"total_parsed":      addedCount + mergedCount + prunedCount,
-		"live_channels":     liveChannels,
+		"failed_urls":       failedURLs,
+		"epg_added_count":   epgAddedCount,
+		"epg_failed_urls":   epgFailedURLs,
+		"live_channels":     allLiveChannels,
 	})
 }
 
@@ -1501,6 +1797,26 @@ func (api *AdminAPI) getAceManager() *acestream.Manager {
 	return api.aceManager
 }
 
+func (api *AdminAPI) getMeshManager() *mesh.Manager {
+	api.mu.RLock()
+	defer api.mu.RUnlock()
+	return api.meshManager
+}
+
+func (api *AdminAPI) handleMeshStatus(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	mgr := api.getMeshManager()
+	if mgr == nil {
+		_ = json.NewEncoder(w).Encode(mesh.MeshStatus{
+			Enabled:      false,
+			BackendState: "NotInitialized",
+			Peers:        []mesh.PeerInfo{},
+		})
+		return
+	}
+	_ = json.NewEncoder(w).Encode(mgr.GetStatus())
+}
+
 func (api *AdminAPI) handleAceStreamStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	mgr := api.getAceManager()
@@ -1562,13 +1878,116 @@ func (api *AdminAPI) handleAceStreamSearch(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	category := strings.TrimSpace(r.URL.Query().Get("category"))
-	res, err := mgr.Search(r.Context(), q, category, 0, 50)
+	page := 0
+	if pStr := strings.TrimSpace(r.URL.Query().Get("page")); pStr != "" {
+		if pv, convErr := strconv.Atoi(pStr); convErr == nil && pv >= 0 {
+			page = pv
+		}
+	}
+	pageSize := 50
+	if psStr := strings.TrimSpace(r.URL.Query().Get("page_size")); psStr != "" {
+		if psv, convErr := strconv.Atoi(psStr); convErr == nil && psv > 0 {
+			if psv > 200 {
+				psv = 200
+			}
+			pageSize = psv
+		}
+	}
+	res, err := mgr.Search(r.Context(), q, category, page, pageSize)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": err.Error()})
 		return
 	}
 	_ = json.NewEncoder(w).Encode(res)
+}
+
+func (api *AdminAPI) handleAceStreamBulkAdd(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		Tier  string `json:"tier"`
+		Items []struct {
+			Name      string `json:"name"`
+			SourceURL string `json:"source_url"`
+			LogoURL   string `json:"logo_url"`
+			EPGID     string `json:"epg_id"`
+		} `json:"items"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+		return
+	}
+	if len(req.Items) == 0 {
+		http.Error(w, "items list cannot be empty", http.StatusBadRequest)
+		return
+	}
+	tier := strings.TrimSpace(req.Tier)
+	if tier == "" {
+		tier = auth.TierFree
+	}
+
+	var upserted []StreamRequest
+	skipped := 0
+
+	api.mu.Lock()
+	for _, item := range req.Items {
+		name := strings.TrimSpace(item.Name)
+		srcURL := strings.TrimSpace(item.SourceURL)
+		if name == "" || srcURL == "" || !acestream.IsAceStreamURL(srcURL) {
+			skipped++
+			continue
+		}
+		if _, _, parseErr := acestream.ParseSource(srcURL); parseErr != nil {
+			skipped++
+			continue
+		}
+		if len(srcURL) == 40 && !strings.HasPrefix(strings.ToLower(srcURL), "acestream://") {
+			srcURL = "acestream://" + srcURL
+		}
+
+		sum := sha256.Sum256([]byte(srcURL + "|" + name))
+		chID := "ace_" + hex.EncodeToString(sum[:5])
+
+		streamReq := StreamRequest{
+			ID:          chID,
+			Name:        name,
+			Tier:        tier,
+			SourceURL:   srcURL,
+			SourceURLs:  []string{srcURL},
+			LogoURL:     strings.TrimSpace(item.LogoURL),
+			EPGID:       strings.TrimSpace(item.EPGID),
+			IsAceStream: true,
+		}
+
+		delete(api.deletedChannelIDs, streamReq.ID)
+		api.streams[streamReq.ID] = streamReq
+		api.normalizedMap[normalizeName(streamReq.Name)] = streamReq.ID
+		upserted = append(upserted, streamReq)
+	}
+	if len(upserted) > 0 {
+		api.saveStateLocked()
+	}
+	api.mu.Unlock()
+
+	for _, sReq := range upserted {
+		if sReq.EPGID != "" {
+			epg.GlobalEPG.MapChannel(sReq.ID, sReq.EPGID)
+		}
+		if api.hooks.OnUpsert != nil {
+			api.hooks.OnUpsert(sReq.ID, sReq.Tier, sReq.SourceURLs)
+		}
+	}
+
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":   "success",
+		"added":    len(upserted),
+		"skipped":  skipped,
+		"channels": upserted,
+	})
 }
 
 func (api *AdminAPI) handleAceStreamAdd(w http.ResponseWriter, r *http.Request) {

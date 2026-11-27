@@ -11,9 +11,16 @@ server:
 transcoder:
   encoder_type: "hevc_nvenc" # Options: hevc_nvenc, hevc_qsv, libx265
   fallback_encoder: "libx264" # For browsers lacking H.265 hardware support
-  gop_seconds: 1             # Strict 1-second Keyframe interval
-  preset: "llhq"             # Low-latency high quality
-  target_fps: 60
+  smoothness_profile: "vlc_smooth" # Options: vlc_smooth (3-5s live buffer, zero-judder), low_latency
+  preserve_source_fps: true        # Keep original source FPS (prevents 25->60fps frame duplication judder)
+  gop_seconds: 2                   # Clean 2-second keyframe cadence for stable browser playback
+  hls_segment_seconds: 3           # 3-second HLS .ts segments for VLC-like smoothness
+  hls_list_size: 8                 # Keep 8 rolling segments (24s edge window)
+  video_bitrate: "4500k"           # Target bitrate for fallback transcode
+  max_rate: "6500k"                # VBV maxrate ceiling
+  buf_size: "13000k"               # VBV buffer size (2x max_rate)
+  preset: "llhq"                   # Low-latency high quality (NVENC) / auto-mapped to veryfast for x264
+  target_fps: 30                   # Used only when preserve_source_fps is false
 
 channels: []
 
@@ -28,4 +35,18 @@ acestream:
   state_base_dir: "data/acestream_states"
   startup_timeout_sec: 20
   stream_mode: "ffmpeg_fmp4" # Options: ffmpeg_fmp4 (recommended for browser compatibility), hls_first
+
+tailscale:
+  enabled: true                    # Set true to activate embedded Tailscale Mesh (tsnet)
+  hostname: "iptv-origin-1"        # Node hostname inside your Tailnet (e.g. iptv-origin-1, iptv-seeder-eu)
+  auth_key: "tskey-auth-kZZvJGSF3w11CNTRL-AtJHZQLCVE34X6SRN2YGE3KxErzxLiy4" # Static reusable tskey-auth-... (or set TS_AUTHKEY env var)
+  oauth_client_secret: ""          # Optional non-expiring Tailscale OAuth secret (or TS_CLIENT_SECRET env var)
+  advertise_tags: ["tag:iptv-mesh"]
+  state_dir: "data/tailscale_state"
+  mesh_role: "origin"              # Options: origin, seeder, hybrid
+  mesh_port: 8448                  # Internal HTTP Mesh transport port over Tailscale (WireGuard)
+  mesh_shared_secret: "m7X9pL2vR8kT4wQ6zY3nB5jH1cF8" # Shared secret header X-Mesh-Secret between mesh nodes (or IPTV_MESH_SECRET env)
+  discovery_tag: "tag:iptv-mesh"   # Auto-discover peers advertising this tag (or hostname prefix iptv-)
+  static_peers: []                 # Optional extra peer URLs e.g. ["http://100.64.0.12:8448"]
+  prefer_tailscale_ice: true       # Prioritize 100.64.0.0/10 Tailscale peers in WebRTC swarm
 

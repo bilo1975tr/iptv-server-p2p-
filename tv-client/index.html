@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>IPTV Cinema — Smart TV İstemcisi</title>
+    <link rel="manifest" href="/tv/manifest.webmanifest">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        :root {
+            --bg-void: #05080f;
+            --surface-scrim: rgba(11, 16, 28, 0.92);
+            --surface-card: #111827;
+            --surface-focus: #1e293b;
+            --border-subtle: rgba(255, 255, 255, 0.12);
+            --text-main: #f8fafc;
+            --text-sub: #cbd5e1;
+            --text-muted: #94a3b8;
+            --tv-accent: #38bdf8;
+            --tv-gold: #f59e0b;
+            --tv-danger: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: var(--bg-void);
+            color: var(--text-main);
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+            user-select: none;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .tabular {
+            font-family: 'JetBrains Mono', monospace;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Fullscreen Video Stage */
+        .tv-stage {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* Center Status / Auth / Buffering Overlay */
+        .tv-center-msg {
+            position: fixed;
+            inset: 0;
+            background: rgba(5, 8, 15, 0.86);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 48px;
+            gap: 18px;
+            z-index: 30;
+        }
+
+        .tv-center-msg h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 700;
+        }
+
+        .tv-center-msg p {
+            font-size: 1.25rem;
+            color: var(--text-sub);
+            max-width: 680px;
+        }
+
+        /* Non-blocking top-left buffering/status banner */
+        .tv-status-banner {
+            position: fixed;
+            top: 32px;
+            left: 48px;
+            max-width: 520px;
+            background: var(--surface-scrim);
+            border: 1px solid var(--border-subtle);
+            border-left: 4px solid var(--tv-accent);
+            border-radius: 10px;
+            padding: 12px 20px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-main);
+            display: none;
+            pointer-events: none;
+            z-index: 27;
+        }
+
+        /* Top-Right Numeric Zap Display & Live Clock */
+        .tv-zap-box {
+            position: fixed;
+            top: 36px;
+            right: 48px;
+            background: var(--surface-scrim);
+            border: 2px solid var(--tv-accent);
+            border-radius: 12px;
+            padding: 14px 28px;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--tv-accent);
+            display: none;
+            z-index: 60;
+        }
+
+        .tv-top-clock {
+            position: fixed;
+            top: 32px;
+            right: 48px;
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--text-main);
+            background: rgba(5, 8, 15, 0.7);
+            padding: 8px 18px;
+            border-radius: 10px;
+            border: 1px solid var(--border-subtle);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 26;
+        }
+
+        body.osd-visible .tv-top-clock {
+            opacity: 1;
+        }
+
+        /* Bottom Broadcast OSD Bar */
+        .tv-osd {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 64px 56px 40px;
+            background: linear-gradient(to top, rgba(5, 8, 15, 0.96) 0%, rgba(5, 8, 15, 0.82) 65%, transparent 100%);
+            transform: translateY(100%);
+            opacity: 0;
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+            z-index: 26;
+            pointer-events: none;
+        }
+
+        body.osd-visible .tv-osd {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .osd-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 24px;
+            margin-bottom: 14px;
+        }
+
+        .osd-ch-line {
+            display: flex;
+            align-items: baseline;
+            gap: 18px;
+            min-width: 0;
+        }
+
+        .osd-ch-num {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--tv-accent);
+        }
+
+        .osd-ch-name {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.35rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .osd-mode-text {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-sub);
+            white-space: nowrap;
+        }
+
+        .osd-epg-block {
+            margin-bottom: 18px;
+        }
+
+        .osd-epg-now {
+            font-size: 1.45rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .osd-epg-meta {
+            font-size: 1.05rem;
+            color: var(--text-sub);
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .osd-progress-track {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.16);
+            border-radius: 999px;
+            overflow: hidden;
+            margin: 12px 0 18px;
+        }
+
+        .osd-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--tv-accent);
+            transition: width 0.3s ease;
+        }
+
+        .osd-actions {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .tv-btn {
+            height: 52px;
+            padding: 0 24px;
+            border-radius: 10px;
+            border: 2px solid var(--border-subtle);
+            background: rgba(17, 24, 39, 0.9);
+            color: var(--text-main);
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: transform 0.14s ease, border-color 0.14s ease, background-color 0.14s ease;
+        }
+
+        .tv-btn.tv-focused, .tv-btn:focus-visible, .tv-btn:hover {
+            outline: none;
+            border-color: var(--tv-accent);
+            background: var(--tv-accent);
+            color: #04111d;
+            transform: scale(1.04);
+        }
+
+        .tv-btn-hint {
+            margin-left: auto;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+        }
+
+        /* 10-Foot Channel Guide Drawer (Left Overlay) */
+        .tv-guide-drawer {
+            position: fixed;
+            inset: 0;
+            background: rgba(5, 8, 15, 0.9);
+            backdrop-filter: blur(10px);
+            display: none;
+            z-index: 40;
+            padding: 40px 48px;
+            gap: 28px;
+        }
+
+        body.guide-open .tv-guide-drawer {
+            display: flex;
+        }
+
+        .tv-cat-rail {
+            width: 260px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border-subtle);
+            padding-right: 24px;
+        }
+
+        .tv-rail-heading {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--text-main);
+        }
+
+        .tv-cat-btn {
+            height: 58px;
+            padding: 0 20px;
+            border-radius: 10px;
+            border: 2px solid transparent;
+            background: var(--surface-card);
+            color: var(--text-sub);
+            font-size: 1.15rem;
+            font-weight: 700;
+            text-align: left;
+            cursor: pointer;
+            transition: transform 0.14s ease, border-color 0.14s ease, background-color 0.14s ease;
+        }
+
+        .tv-cat-btn.active {
+            color: var(--tv-accent);
+            background: rgba(56, 189, 248, 0.14);
+        }
+
+        .tv-cat-btn.tv-focused, .tv-cat-btn:hover {
+            border-color: var(--tv-accent);
+            background: var(--surface-focus);
+            color: var(--text-main);
+            transform: scale(1.03);
+        }
+
+        .tv-channel-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        .tv-pane-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+        }
+
+        .tv-pane-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.7rem;
+            font-weight: 700;
+        }
+
+        .tv-pane-sub {
+            font-size: 1rem;
+            color: var(--text-muted);
+        }
+
+        .tv-channel-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 4px 8px 24px;
+        }
+
+        .tv-ch-card {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 16px 22px;
+            border-radius: 12px;
+            border: 2px solid var(--border-subtle);
+            background: var(--surface-card);
+            cursor: pointer;
+            transition: transform 0.14s ease, border-color 0.14s ease, background-color 0.14s ease;
+        }
+
+        .tv-ch-card.is-playing {
+            border-color: rgba(245, 158, 11, 0.7);
+        }
+
+        .tv-ch-card.tv-focused, .tv-ch-card:hover {
+            border-color: var(--tv-accent);
+            background: var(--surface-focus);
+            transform: scale(1.015);
+        }
+
+        .tv-card-num {
+            width: 58px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--tv-accent);
+            flex-shrink: 0;
+        }
+
+        .tv-card-logo {
+            width: 56px;
+            height: 56px;
+            border-radius: 10px;
+            background: var(--bg-void);
+            border: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--tv-gold);
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .tv-card-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .tv-card-body {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .tv-card-name {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.35rem;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tv-card-epg {
+            font-size: 1.05rem;
+            color: var(--text-sub);
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tv-card-meta {
+            text-align: right;
+            font-size: 0.98rem;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        /* TV Settings & Login Modal */
+        .tv-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(5, 8, 15, 0.88);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            padding: 32px;
+        }
+
+        .tv-modal-box {
+            width: 100%;
+            max-width: 640px;
+            background: var(--surface-card);
+            border: 2px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 32px;
+        }
+
+        .tv-modal-box h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.75rem;
+            margin-bottom: 20px;
+        }
+
+        .tv-field-label {
+            display: block;
+            font-size: 1rem;
+            color: var(--text-sub);
+            margin-bottom: 8px;
+        }
+
+        .tv-input {
+            width: 100%;
+            height: 52px;
+            padding: 0 16px;
+            border-radius: 10px;
+            border: 2px solid var(--border-subtle);
+            background: var(--bg-void);
+            color: var(--text-main);
+            font-size: 1.1rem;
+            margin-bottom: 18px;
+        }
+
+        .tv-input:focus {
+            outline: none;
+            border-color: var(--tv-accent);
+        }
+
+        .tv-modal-actions {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body class="osd-visible">
+    <div class="tv-stage">
+        <video id="tvVideo" autoplay muted playsinline></video>
+    </div>
+
+    <div class="tv-status-banner" id="tvStatusBanner">Yayın hazırlanıyor...</div>
+    <div class="tv-top-clock tabular" id="tvTopClock">--:--</div>
+    <div class="tv-zap-box tabular" id="tvZapBox">001</div>
+
+    <div class="tv-center-msg" id="tvCenterMsg">
+        <h1 id="tvMsgTitle">IPTV Cinema TV</h1>
+        <p id="tvMsgBody">Kanallar yükleniyor...</p>
+        <div style="display:flex; gap:14px; margin-top:8px; flex-wrap:wrap; justify-content:center;">
+            <button type="button" class="tv-btn" id="tvNextChBtn" onclick="nextChannelFromMsg()">Sonraki Kanal</button>
+            <button type="button" class="tv-btn" id="tvGuideMsgBtn" onclick="openGuideFromMsg()">Kanallar (Rehber)</button>
+            <button type="button" class="tv-btn" id="tvRetryBtn" onclick="reloadTvApp()">Yeniden Dene</button>
+            <button type="button" class="tv-btn" id="tvSettingsMsgBtn" onclick="openTvSettings()">Sunucu / Giriş Ayarları</button>
+        </div>
+    </div>
+
+    <!-- Auto-Hiding Broadcast OSD -->
+    <section class="tv-osd" aria-label="Yayın Bilgi Çubuğu">
+        <div class="osd-header">
+            <div class="osd-ch-line">
+                <span class="osd-ch-num tabular" id="osdChNum">001</span>
+                <span class="osd-ch-name" id="osdChName">Yükleniyor...</span>
+            </div>
+            <div class="osd-mode-text tabular" id="osdModeText">CANLI</div>
+        </div>
+
+        <div class="osd-epg-block">
+            <div class="osd-epg-now" id="osdEpgNow">Yayın bilgisi bekleniyor...</div>
+            <div class="osd-epg-meta">
+                <span class="tabular" id="osdEpgTime">--:-- - --:--</span>
+                <span aria-hidden="true">·</span>
+                <span id="osdEpgNext">Sonraki: --</span>
+                <span aria-hidden="true">·</span>
+                <span class="tabular" id="osdP2pInfo">Swarm: 1 Eş · %0 P2P</span>
+            </div>
+            <div class="osd-progress-track">
+                <div class="osd-progress-fill" id="osdProgressFill"></div>
+            </div>
+        </div>
+
+        <div class="osd-actions" id="osdActions">
+            <button type="button" class="tv-btn osd-nav-btn" data-action="guide">Kanallar</button>
+            <button type="button" class="tv-btn osd-nav-btn" id="osdPlayBtn" data-action="playpause">Duraklat</button>
+            <button type="button" class="tv-btn osd-nav-btn" data-action="rw5m">-5 dk DVR</button>
+            <button type="button" class="tv-btn osd-nav-btn" data-action="ff5m">+5 dk</button>
+            <button type="button" class="tv-btn osd-nav-btn" id="osdLiveBtn" data-action="live">Canlıya Dön</button>
+            <button type="button" class="tv-btn osd-nav-btn" data-action="fav">Favori</button>
+            <button type="button" class="tv-btn osd-nav-btn" data-action="settings">Ayarlar</button>
+            <span class="tv-btn-hint">Kumanda: OK · ↑↓ Kanal · ←→ Sar · 0-9 Numara</span>
+        </div>
+    </section>
+
+    <!-- 10-Foot Fullscreen Channel & EPG Guide -->
+    <aside class="tv-guide-drawer" aria-label="TV Kanal Rehberi">
+        <div class="tv-cat-rail" id="tvCategoryRail">
+            <div class="tv-rail-heading">Kategoriler</div>
+            <button type="button" class="tv-cat-btn active" data-cat="all">Tümü</button>
+            <button type="button" class="tv-cat-btn" data-cat="favorites">Favoriler</button>
+            <button type="button" class="tv-cat-btn" data-cat="free">Ücretsiz Kanallar</button>
+            <button type="button" class="tv-cat-btn" data-cat="paid">Ücretli Kanallar</button>
+            <button type="button" class="tv-cat-btn" data-cat="acestream">AceStream</button>
+        </div>
+        <div class="tv-channel-pane">
+            <div class="tv-pane-top">
+                <div class="tv-pane-title" id="tvGuideTitle">Tüm Kanallar</div>
+                <div class="tv-pane-sub">← Kategoriler · OK İzle · Geri Kapat</div>
+            </div>
+            <div class="tv-channel-list" id="tvChannelList"></div>
+        </div>
+    </aside>
+
+    <!-- TV Server & Account Settings Modal -->
+    <div class="tv-modal" id="tvSettingsModal">
+        <div class="tv-modal-box">
+            <h2>Smart TV Ayarları</h2>
+            <div id="tvSessionStatus" style="padding:10px 14px; margin-bottom:16px; border-radius:10px; background:var(--bg-void); border:1px solid var(--border-subtle); font-size:1rem; color:var(--text-sub);">Oturum: Misafir</div>
+
+            <label class="tv-field-label" for="tvServerInput">Sunucu Adresi (LAN veya Tailscale IP)</label>
+            <input type="text" id="tvServerInput" class="tv-input" placeholder="http://192.168.1.10:8080">
+
+            <label class="tv-field-label" for="tvUserInput">Hesap Kullanıcı Adı (Ücretli Kanallar / Favori)</label>
+            <input type="text" id="tvUserInput" class="tv-input" placeholder="Opsiyonel">
+
+            <label class="tv-field-label" for="tvPassInput">Şifre</label>
+            <input type="password" id="tvPassInput" class="tv-input" placeholder="Opsiyonel">
+
+            <div id="tvSettingsMsg" style="font-size:1rem; color:var(--tv-gold); margin-bottom:12px;"></div>
+
+            <div class="tv-modal-actions">
+                <button type="button" class="tv-btn tv-modal-btn" id="tvSaveSettingsBtn" onclick="saveTvSettings()">Kaydet ve Bağlan</button>
+                <button type="button" class="tv-btn tv-modal-btn" onclick="toggleTvMute()">Ses Aç / Kapat</button>
+                <button type="button" class="tv-btn tv-modal-btn" id="tvLogoutBtn" style="display:none; border-color:rgba(239,68,68,0.6); color:#fecaca;" onclick="logoutTvAccount()">Çıkış Yap</button>
+                <button type="button" class="tv-btn tv-modal-btn" onclick="closeTvSettings()">Kapat</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/tv/tv-app.js?v=4"></script>
+</body>
+</html>

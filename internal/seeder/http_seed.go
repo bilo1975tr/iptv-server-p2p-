@@ -6,9 +6,11 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -19,6 +21,7 @@ import (
 	"iptv-p2p-server/internal/acestream"
 	"iptv-p2p-server/internal/auth"
 	"iptv-p2p-server/internal/ingester"
+	"iptv-p2p-server/internal/mesh"
 	"iptv-p2p-server/internal/packager"
 )
 
@@ -34,43 +37,136 @@ type activeStream struct {
 	lastAccess time.Time
 }
 
-type SeedServer struct {
-	authManager     *auth.AuthManager
-	aceManager      *acestream.Manager
-	masterKey       string
-	encoderType     string
-	fallbackEncoder string
-	preset          string
-	targetFPS       int
-	gopSeconds      int
-	proxySecret     []byte
-	httpClient      *http.Client
+type liveHLSStream struct {
+	remuxer    *ingester.LiveHLSRemuxer
+	lastAccess time.Time
+}
 
-	mu       sync.RWMutex
-	configs  map[string]ChannelConfig
-	active   map[string]*activeStream
-	viewers  map[string]map[string]time.Time // channelID -> viewerKey -> lastSeen
+type SeedServer struct {
+	authManager       *auth.AuthManager
+	aceManager        *acestream.Manager
+	meshMgr           *mesh.Manager
+	masterKey         string
+	encoderType       string
+	fallbackEncoder   string
+	preset            string
+	targetFPS         int
+	gopSeconds        int
+	smoothProfile     string
+	preserveSourceFPS bool
+	hlsSegmentSeconds int
+	hlsListSize       int
+	videoBitrate      string
+	maxRate           string
+	bufSize           string
+	proxySecret       []byte
+	httpClient        *http.Client
+
+	mu          sync.RWMutex
+	configs     map[string]ChannelConfig
+	active      map[string]*activeStream
+	liveHLS     map[string]*liveHLSStream
+	viewers     map[string]map[string]time.Time // channelID -> viewerKey -> lastSeen
+	failedUntil map[string]time.Time
 }
 
 func NewSeedServer(authMgr *auth.AuthManager, masterKey, encoderType, fallbackEncoder, preset string, targetFPS, gopSeconds int, proxySecret string) *SeedServer {
+	// Use transport-level timeouts (Dial + ResponseHeader) without a total request Timeout
+	// so large .ts segments never get truncated mid-download.
+	tr := &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout:   8 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		TLSHandshakeTimeout:   8 * time.Second,
+		ResponseHeaderTimeout: 14 * time.Second,
+		IdleConnTimeout:       90 * time.Second,
+		MaxIdleConns:          128,
+		MaxIdleConnsPerHost:   32,
+	}
 	s := &SeedServer{
-		authManager:     authMgr,
-		masterKey:       masterKey,
-		encoderType:     encoderType,
-		fallbackEncoder: fallbackEncoder,
-		preset:          preset,
-		targetFPS:       targetFPS,
-		gopSeconds:      gopSeconds,
-		proxySecret:     []byte(proxySecret),
+		authManager:       authMgr,
+		masterKey:         masterKey,
+		encoderType:       encoderType,
+		fallbackEncoder:   fallbackEncoder,
+		preset:            preset,
+		targetFPS:         targetFPS,
+		gopSeconds:        gopSeconds,
+		smoothProfile:     "vlc_smooth",
+		preserveSourceFPS: true,
+		hlsSegmentSeconds: 3,
+		hlsListSize:       8,
+		videoBitrate:      "4500k",
+		maxRate:           "6500k",
+		bufSize:           "13000k",
+		proxySecret:       []byte(proxySecret),
 		httpClient: &http.Client{
-			Timeout: 12 * time.Second,
+			Transport: tr,
 		},
-		configs: make(map[string]ChannelConfig),
-		active:  make(map[string]*activeStream),
-		viewers: make(map[string]map[string]time.Time),
+		configs:     make(map[string]ChannelConfig),
+		active:      make(map[string]*activeStream),
+		liveHLS:     make(map[string]*liveHLSStream),
+		viewers:     make(map[string]map[string]time.Time),
+		failedUntil: make(map[string]time.Time),
 	}
 	go s.idleReaperLoop()
 	return s
+}
+
+func (s *SeedServer) SetTranscoderOptions(smoothProfile string, preserveSourceFPS bool, hlsSegSec, hlsListSize int, videoBitrate, maxRate, bufSize string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if smoothProfile != "" {
+		s.smoothProfile = smoothProfile
+	}
+	s.preserveSourceFPS = preserveSourceFPS
+	if hlsSegSec > 0 {
+		s.hlsSegmentSeconds = hlsSegSec
+	}
+	if hlsListSize > 0 {
+		s.hlsListSize = hlsListSize
+	}
+	if videoBitrate != "" {
+		s.videoBitrate = videoBitrate
+	}
+	if maxRate != "" {
+		s.maxRate = maxRate
+	}
+	if bufSize != "" {
+		s.bufSize = bufSize
+	}
+}
+
+func (s *SeedServer) SetMeshManager(mgr *mesh.Manager) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.meshMgr = mgr
+}
+
+func (s *SeedServer) hlsOptions() ingester.HLSRemuxerOptions {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return ingester.HLSRemuxerOptions{
+		SegmentSeconds:    s.hlsSegmentSeconds,
+		ListSize:          s.hlsListSize,
+		SmoothProfile:     s.smoothProfile,
+		VideoBitrate:      s.videoBitrate,
+		MaxRate:           s.maxRate,
+		BufSize:           s.bufSize,
+		PreserveSourceFPS: s.preserveSourceFPS,
+	}
+}
+
+func (s *SeedServer) pipelineOptions() ingester.StreamPipelineOptions {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return ingester.StreamPipelineOptions{
+		SmoothProfile:     s.smoothProfile,
+		PreserveSourceFPS: s.preserveSourceFPS,
+		VideoBitrate:      s.videoBitrate,
+		MaxRate:           s.maxRate,
+		BufSize:           s.bufSize,
+	}
 }
 
 func viewerKeyFromRequest(r *http.Request) string {
@@ -84,17 +180,56 @@ func viewerKeyFromRequest(r *http.Request) string {
 	return "ip:" + host
 }
 
-// RecordViewer records an active playback heartbeat for a channel
+// RecordViewer records an active playback heartbeat for a channel (and keeps active streams alive while paused)
 func (s *SeedServer) RecordViewer(channelID, viewerKey string) {
 	if channelID == "" || viewerKey == "" {
 		return
 	}
+	now := time.Now()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.viewers[channelID] == nil {
 		s.viewers[channelID] = make(map[string]time.Time)
 	}
-	s.viewers[channelID][viewerKey] = time.Now()
+	s.viewers[channelID][viewerKey] = now
+	if act, ok := s.active[channelID]; ok && act != nil {
+		act.lastAccess = now
+	}
+	if lh, ok := s.liveHLS[channelID]; ok && lh != nil {
+		lh.lastAccess = now
+	}
+}
+
+// TouchStreamAndRefreshIP keeps active streams alive on subrequests (/playlist, /seg, /liveseg)
+// and only refreshes an ip: viewer key if that IP was already registered directly (e.g. VLC without vid),
+// preventing a browser player with v:<tabId> from being counted twice.
+func (s *SeedServer) TouchStreamAndRefreshIP(channelID string, r *http.Request) {
+	if channelID == "" {
+		return
+	}
+	now := time.Now()
+	vid := strings.TrimSpace(r.URL.Query().Get("vid"))
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if act, ok := s.active[channelID]; ok && act != nil {
+		act.lastAccess = now
+	}
+	if lh, ok := s.liveHLS[channelID]; ok && lh != nil {
+		lh.lastAccess = now
+	}
+	if vid != "" && len(vid) <= 64 {
+		if s.viewers[channelID] == nil {
+			s.viewers[channelID] = make(map[string]time.Time)
+		}
+		s.viewers[channelID]["v:"+vid] = now
+		return
+	}
+	if m := s.viewers[channelID]; m != nil {
+		ipKey := viewerKeyFromRequest(r)
+		if _, exists := m[ipKey]; exists {
+			m[ipKey] = now
+		}
+	}
 }
 
 // RemoveViewer removes a viewer immediately when they switch away or close the player
@@ -153,6 +288,7 @@ func (s *SeedServer) RegisterChannelConfig(channelID, tier string, sourceURLs []
 			cleaned = append(cleaned, u)
 		}
 	}
+	delete(s.failedUntil, channelID)
 	s.configs[channelID] = ChannelConfig{
 		ID:         channelID,
 		Tier:       tier,
@@ -160,12 +296,17 @@ func (s *SeedServer) RegisterChannelConfig(channelID, tier string, sourceURLs []
 	}
 }
 
-// StopChannel stops an active FFmpeg pipeline and releases its chunker
+// StopChannel stops an active FFmpeg pipeline or LiveHLS remuxer and releases its resources
 func (s *SeedServer) StopChannel(channelID string) {
 	s.mu.Lock()
+	delete(s.failedUntil, channelID)
 	act, exists := s.active[channelID]
 	if exists {
 		delete(s.active, channelID)
+	}
+	lh, lhExists := s.liveHLS[channelID]
+	if lhExists {
+		delete(s.liveHLS, channelID)
 	}
 	s.mu.Unlock()
 
@@ -177,6 +318,9 @@ func (s *SeedServer) StopChannel(channelID string) {
 			act.chunker.Close()
 		}
 	}
+	if lhExists && lh != nil && lh.remuxer != nil {
+		lh.remuxer.Stop()
+	}
 	if s.aceManager != nil {
 		s.aceManager.ReleaseStream(channelID)
 	}
@@ -187,6 +331,7 @@ func (s *SeedServer) UnregisterChannel(channelID string) {
 	s.StopChannel(channelID)
 	s.mu.Lock()
 	delete(s.configs, channelID)
+	delete(s.failedUntil, channelID)
 	s.mu.Unlock()
 }
 
@@ -200,12 +345,15 @@ func (s *SeedServer) GetChannelTier(channelID string) string {
 	return ""
 }
 
-// GetActiveChannelIDs returns channel IDs currently running FFmpeg transcoding
+// GetActiveChannelIDs returns channel IDs currently running FFmpeg transcoding or HLS remuxing
 func (s *SeedServer) GetActiveChannelIDs() map[string]bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	res := make(map[string]bool, len(s.active))
+	res := make(map[string]bool, len(s.active)+len(s.liveHLS))
 	for id := range s.active {
+		res[id] = true
+	}
+	for id := range s.liveHLS {
 		res[id] = true
 	}
 	return res
@@ -225,6 +373,11 @@ func (s *SeedServer) idleReaperLoop() {
 				toStop = append(toStop, id)
 			}
 		}
+		for id, lh := range s.liveHLS {
+			if now.Sub(lh.lastAccess) > 90*time.Second {
+				toStop = append(toStop, id)
+			}
+		}
 		s.mu.RUnlock()
 
 		for _, id := range toStop {
@@ -232,6 +385,77 @@ func (s *SeedServer) idleReaperLoop() {
 			s.StopChannel(id)
 		}
 	}
+}
+
+func (s *SeedServer) ensureLiveHLSStream(channelID, sourceURL string) (*liveHLSStream, bool) {
+	s.mu.Lock()
+	if lh, ok := s.liveHLS[channelID]; ok && lh != nil && lh.remuxer != nil {
+		select {
+		case <-lh.remuxer.Done():
+			lh.remuxer.Stop()
+			delete(s.liveHLS, channelID)
+		default:
+			lh.lastAccess = time.Now()
+			s.mu.Unlock()
+			return lh, true
+		}
+	}
+	s.mu.Unlock()
+
+	if strings.TrimSpace(sourceURL) == "" {
+		return nil, false
+	}
+
+	effectiveURL := sourceURL
+	isAce := acestream.IsAceStreamURL(sourceURL)
+	if isAce {
+		if s.aceManager == nil || !s.aceManager.IsEnabled() {
+			return nil, false
+		}
+		sess, aceErr := s.aceManager.AcquireStream(context.Background(), channelID, sourceURL, false)
+		if aceErr != nil {
+			log.Printf("⚠️ [HLS-REMUX] AceStream acquire failed for %s: %v", channelID, aceErr)
+			return nil, false
+		}
+		effectiveURL = sess.PlaybackURL
+	}
+
+	remuxer := ingester.NewLiveHLSRemuxerWithOptions(channelID, effectiveURL, s.fallbackEncoder, s.targetFPS, s.hlsOptions())
+	if err := remuxer.Start(); err != nil {
+		if isAce && s.aceManager != nil {
+			s.aceManager.ReleaseStream(channelID)
+		}
+		return nil, false
+	}
+
+	lh := &liveHLSStream{
+		remuxer:    remuxer,
+		lastAccess: time.Now(),
+	}
+
+	s.mu.Lock()
+	// Handle concurrent race if another request just created one
+	if existing, ok := s.liveHLS[channelID]; ok && existing != nil {
+		existing.lastAccess = time.Now()
+		s.mu.Unlock()
+		remuxer.Stop()
+		return existing, true
+	}
+	s.liveHLS[channelID] = lh
+	s.mu.Unlock()
+
+	return lh, true
+}
+
+func (s *SeedServer) getLiveHLSStream(channelID string) (*liveHLSStream, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	lh, ok := s.liveHLS[channelID]
+	if ok && lh != nil {
+		lh.lastAccess = time.Now()
+		return lh, true
+	}
+	return nil, false
 }
 
 func (s *SeedServer) ensureActiveStream(channelID string) (*activeStream, ChannelConfig, bool) {
@@ -246,6 +470,14 @@ func (s *SeedServer) ensureActiveStream(channelID string) (*activeStream, Channe
 		act.lastAccess = time.Now()
 		s.mu.Unlock()
 		return act, cfg, true
+	}
+
+	if until, inCooldown := s.failedUntil[channelID]; inCooldown {
+		if time.Now().Before(until) {
+			s.mu.Unlock()
+			return nil, cfg, false
+		}
+		delete(s.failedUntil, channelID)
 	}
 
 	if len(cfg.SourceURLs) == 0 {
@@ -274,14 +506,22 @@ func (s *SeedServer) ensureActiveStream(channelID string) (*activeStream, Channe
 	s.mu.Unlock()
 
 	go func(chID string, urls []string, c *packager.Chunker, expectedAct *activeStream) {
+		anyEmitted := false
 		defer func() {
 			c.Close()
 			if aceMgr != nil {
 				aceMgr.ReleaseStream(chID)
 			}
 			s.mu.Lock()
+			wasCurrentActive := false
 			if cur, ok := s.active[chID]; ok && cur == expectedAct {
+				wasCurrentActive = true
 				delete(s.active, chID)
+			}
+			if wasCurrentActive && !anyEmitted {
+				s.failedUntil[chID] = time.Now().Add(15 * time.Second)
+			} else if anyEmitted {
+				delete(s.failedUntil, chID)
 			}
 			s.mu.Unlock()
 		}()
@@ -311,7 +551,7 @@ func (s *SeedServer) ensureActiveStream(channelID string) (*activeStream, Channe
 
 			enc := s.encoderType
 			preset := s.preset
-			p := ingester.NewStreamPipeline(chID, effectiveURL, enc, s.fallbackEncoder, preset, s.targetFPS, s.gopSeconds)
+			p := ingester.NewStreamPipelineWithOptions(chID, effectiveURL, enc, s.fallbackEncoder, preset, s.targetFPS, s.gopSeconds, s.pipelineOptions())
 			s.mu.Lock()
 			if cur, ok := s.active[chID]; ok && cur == expectedAct {
 				cur.pipeline = p
@@ -332,6 +572,9 @@ func (s *SeedServer) ensureActiveStream(channelID string) (*activeStream, Channe
 			}
 
 			emitted = c.ProcessStream(reader)
+			if emitted > 0 {
+				anyEmitted = true
+			}
 			p.Stop()
 
 			// If hardware encoder (e.g. hevc_nvenc/hevc_qsv) exited with 0 chunks, retry once with software fallback
@@ -356,7 +599,7 @@ func (s *SeedServer) ensureActiveStream(channelID string) (*activeStream, Channe
 					}
 				}
 
-				fbPipe := ingester.NewStreamPipeline(chID, fbURL, s.fallbackEncoder, s.fallbackEncoder, "ultrafast", s.targetFPS, s.gopSeconds)
+				fbPipe := ingester.NewStreamPipelineWithOptions(chID, fbURL, s.fallbackEncoder, s.fallbackEncoder, "veryfast", s.targetFPS, s.gopSeconds, s.pipelineOptions())
 				s.mu.Lock()
 				if cur, ok := s.active[chID]; ok && cur == expectedAct {
 					cur.pipeline = fbPipe
@@ -368,6 +611,9 @@ func (s *SeedServer) ensureActiveStream(channelID string) (*activeStream, Channe
 
 				if fbReader, fbErr := fbPipe.Start(); fbErr == nil {
 					emitted = c.ProcessStream(fbReader)
+					if emitted > 0 {
+						anyEmitted = true
+					}
 					fbPipe.Stop()
 				}
 			}
@@ -562,13 +808,45 @@ func (s *SeedServer) ServeHLSProxy(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized: Subscription required for paid channel", http.StatusForbidden)
 		return
 	}
-	s.RecordViewer(channelID, viewerKeyFromRequest(r))
+	if action == "master.m3u8" || strings.TrimSpace(r.URL.Query().Get("vid")) != "" {
+		s.RecordViewer(channelID, viewerKeyFromRequest(r))
+	} else {
+		s.TouchStreamAndRefreshIP(channelID, r)
+	}
 
 	switch action {
 	case "master.m3u8":
 		if len(cfg.SourceURLs) == 0 {
 			http.Error(w, "No source URLs configured for channel", http.StatusNotFound)
 			return
+		}
+		if lh, exists := s.getLiveHLSStream(channelID); exists && lh.remuxer != nil {
+			remuxAlive := true
+			select {
+			case <-lh.remuxer.Done():
+				remuxAlive = false
+			default:
+			}
+			if remuxAlive {
+				if pl, plErr := lh.remuxer.ReadPlaylist(); plErr == nil && strings.Contains(pl, "#EXTINF:") {
+					rewritten := s.rewriteLocalHLSPlaylist(pl, channelID, tokenStr)
+					w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+					w.Header().Set("Cache-Control", "no-store")
+					_, _ = w.Write([]byte(rewritten))
+					return
+				}
+			}
+		}
+		if s.meshMgr != nil {
+			if peerBase, peerHost, ok := s.meshMgr.PickPeerForChannel(channelID); ok {
+				if plBody, mErr := s.fetchMeshPlaylist(r.Context(), peerBase, peerBase+"/api/mesh/stream/"+url.PathEscape(channelID)+"/master.m3u8", channelID, tokenStr); mErr == nil {
+					w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+					w.Header().Set("Cache-Control", "no-store")
+					w.Header().Set("X-Mesh-Peer", peerHost)
+					_, _ = w.Write([]byte(plBody))
+					return
+				}
+			}
 		}
 		var lastErr error
 		for idx, srcURL := range cfg.SourceURLs {
@@ -594,7 +872,18 @@ func (s *SeedServer) ServeHLSProxy(w http.ResponseWriter, r *http.Request) {
 					}
 					s.aceManager.ReleaseStream(channelID)
 				}
-				// Default ffmpeg_fmp4 mode (or HLS fallback): return JSON mode hint so browser switches cleanly to /live/:channelID/init.mp4 without HTTP error noise
+				// Try lightweight HLS .ts remuxer first for AceStream so clients share .ts segments
+				if lh, ok := s.ensureLiveHLSStream(channelID, srcURL); ok && lh.remuxer.WaitReady(r.Context(), 12*time.Second) {
+					if pl, plErr := lh.remuxer.ReadPlaylist(); plErr == nil && strings.Contains(pl, "#EXTINF:") {
+						rewritten := s.rewriteLocalHLSPlaylist(pl, channelID, tokenStr)
+						w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+						w.Header().Set("Cache-Control", "no-store")
+						w.Header().Set("X-Source-Index", fmt.Sprintf("%d", idx))
+						_, _ = w.Write([]byte(rewritten))
+						return
+					}
+				}
+				// Fallback to MSE fMP4 hint if remuxer is not ready
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
 				_, _ = w.Write([]byte(`{"transport":"mse_fmp4","init_url":"/live/` + url.PathEscape(channelID) + `/init.mp4"}`))
@@ -616,13 +905,46 @@ func (s *SeedServer) ServeHLSProxy(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			// Direct non-HLS live stream (e.g. raw MPEG-TS / RTSP): hand back MSE hint
+			// Direct non-HLS live stream (e.g. raw MPEG-TS / RTSP): slice into standard .ts HLS segments via -c:v copy (no 1s forced transcode)
+			if lh, ok := s.ensureLiveHLSStream(channelID, finalURL); ok && lh.remuxer.WaitReady(r.Context(), 10*time.Second) {
+				if pl, plErr := lh.remuxer.ReadPlaylist(); plErr == nil && strings.Contains(pl, "#EXTINF:") {
+					rewritten := s.rewriteLocalHLSPlaylist(pl, channelID, tokenStr)
+					w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+					w.Header().Set("Cache-Control", "no-store")
+					w.Header().Set("X-Source-Index", fmt.Sprintf("%d", idx))
+					_, _ = w.Write([]byte(rewritten))
+					return
+				}
+			}
+
+			// Safety fallback if remuxer did not produce .ts in time
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"transport":"mse_fmp4","init_url":"/live/` + url.PathEscape(channelID) + `/init.mp4"}`))
 			return
 		}
 		http.Error(w, fmt.Sprintf("All %d upstream sources failed: %v", len(cfg.SourceURLs), lastErr), http.StatusBadGateway)
+
+	case "liveseg":
+		if len(pathParts) < 5 {
+			http.Error(w, "Missing segment name", http.StatusBadRequest)
+			return
+		}
+		segName := pathParts[4]
+		lh, ok := s.getLiveHLSStream(channelID)
+		if !ok || lh.remuxer == nil {
+			http.Error(w, "Live HLS session not active", http.StatusNotFound)
+			return
+		}
+		data, readErr := lh.remuxer.ReadSegment(segName)
+		if readErr != nil {
+			http.Error(w, "Segment evicted or not found", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "video/mp2t")
+		w.Header().Set("Cache-Control", "public, max-age=300")
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", len(data)))
+		_, _ = w.Write(data)
 
 	case "playlist", "seg":
 		targetURL := r.URL.Query().Get("u")
@@ -674,9 +996,79 @@ func (s *SeedServer) ServeHLSProxy(w http.ResponseWriter, r *http.Request) {
 		}
 		_, _ = io.Copy(w, resp.Body)
 
+	case "mesh":
+		if s.meshMgr == nil {
+			http.Error(w, "Tailscale Mesh not active", http.StatusServiceUnavailable)
+			return
+		}
+		targetURL := r.URL.Query().Get("u")
+		sig := r.URL.Query().Get("sig")
+		if targetURL == "" || !s.verifyProxySig(channelID, targetURL, sig) {
+			http.Error(w, "Invalid or unsigned mesh target", http.StatusForbidden)
+			return
+		}
+		req, reqErr := http.NewRequestWithContext(r.Context(), http.MethodGet, targetURL, nil)
+		if reqErr != nil {
+			http.Error(w, "Invalid mesh target URL", http.StatusBadRequest)
+			return
+		}
+		if sec := s.meshMgr.SharedSecret(); sec != "" {
+			req.Header.Set("X-Mesh-Secret", sec)
+		}
+		resp, doErr := s.meshMgr.HTTPClient().Do(req)
+		if doErr != nil {
+			http.Error(w, "Mesh peer fetch error", http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode < 200 || resp.StatusCode >= 400 {
+			http.Error(w, fmt.Sprintf("Mesh peer status %d", resp.StatusCode), http.StatusBadGateway)
+			return
+		}
+		ct := resp.Header.Get("Content-Type")
+		lowerCT := strings.ToLower(ct)
+		if strings.Contains(lowerCT, "mpegurl") || strings.Contains(strings.ToLower(targetURL), ".m3u8") || strings.Contains(strings.ToLower(targetURL), "/playlist") {
+			body, readErr := io.ReadAll(io.LimitReader(resp.Body, 8*1024*1024))
+			if readErr != nil {
+				http.Error(w, "Failed reading mesh playlist", http.StatusBadGateway)
+				return
+			}
+			rewritten := s.rewriteMeshPlaylist(string(body), targetURL, channelID, tokenStr)
+			w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+			w.Header().Set("Cache-Control", "no-store")
+			_, _ = w.Write([]byte(rewritten))
+			return
+		}
+		if ct != "" {
+			w.Header().Set("Content-Type", ct)
+		} else {
+			w.Header().Set("Content-Type", "video/mp2t")
+		}
+		w.Header().Set("Cache-Control", "public, max-age=300")
+		n, _ := io.Copy(w, resp.Body)
+		s.meshMgr.AddBytesPulled(n)
+
 	default:
 		http.Error(w, "Unknown stream action", http.StatusNotFound)
 	}
+}
+
+func (s *SeedServer) rewriteLocalHLSPlaylist(content, channelID, tokenStr string) string {
+	var out strings.Builder
+	scanner := bufio.NewScanner(strings.NewReader(content))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			out.WriteString(line + "\n")
+			continue
+		}
+		segURL := fmt.Sprintf("/api/stream/%s/liveseg/%s", url.PathEscape(channelID), url.PathEscape(line))
+		if tokenStr != "" {
+			segURL += "?token=" + url.QueryEscape(tokenStr)
+		}
+		out.WriteString(segURL + "\n")
+	}
+	return out.String()
 }
 
 func (s *SeedServer) fetchUpstreamPlaylist(rawURL string) ([]byte, string, string, bool, error) {
@@ -828,3 +1220,299 @@ func extractToken(r *http.Request) string {
 	}
 	return ""
 }
+
+func (s *SeedServer) fetchMeshPlaylist(ctx context.Context, peerBase, targetURL, channelID, tokenStr string) (string, error) {
+	if s.meshMgr == nil {
+		return "", fmt.Errorf("mesh disabled")
+	}
+	reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, targetURL, nil)
+	if err != nil {
+		return "", err
+	}
+	if sec := s.meshMgr.SharedSecret(); sec != "" {
+		req.Header.Set("X-Mesh-Secret", sec)
+	}
+	resp, err := s.meshMgr.HTTPClient().Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("mesh status %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 8*1024*1024))
+	if err != nil {
+		return "", err
+	}
+	txt := string(body)
+	if !strings.Contains(txt, "#EXTM3U") {
+		return "", fmt.Errorf("mesh response not m3u8")
+	}
+	s.meshMgr.AddBytesPulled(int64(len(body)))
+	return s.rewriteMeshPlaylist(txt, targetURL, channelID, tokenStr), nil
+}
+
+func (s *SeedServer) rewriteMeshPlaylist(content, baseMeshURLStr, channelID, tokenStr string) string {
+	baseURL, err := url.Parse(baseMeshURLStr)
+	if err != nil {
+		return content
+	}
+	var out strings.Builder
+	scanner := bufio.NewScanner(strings.NewReader(content))
+	scanner.Buffer(make([]byte, 64*1024), 2*1024*1024)
+	for scanner.Scan() {
+		line := scanner.Text()
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			if strings.Contains(trimmed, `URI="`) {
+				idx := strings.Index(line, `URI="`)
+				start := idx + 5
+				if end := strings.Index(line[start:], `"`); idx >= 0 && end >= 0 {
+					if ref, pErr := url.Parse(line[start : start+end]); pErr == nil {
+						resolved := baseURL.ResolveReference(ref).String()
+						sig := s.signProxyTarget(channelID, resolved)
+						proxied := fmt.Sprintf("/api/stream/%s/mesh?u=%s&sig=%s", url.PathEscape(channelID), url.QueryEscape(resolved), sig)
+						if tokenStr != "" {
+							proxied += "&token=" + url.QueryEscape(tokenStr)
+						}
+						line = line[:start] + proxied + line[start+end:]
+					}
+				}
+			}
+			out.WriteString(line + "\n")
+			continue
+		}
+		refURL, pErr := url.Parse(trimmed)
+		if pErr != nil {
+			out.WriteString(line + "\n")
+			continue
+		}
+		resolved := baseURL.ResolveReference(refURL).String()
+		sig := s.signProxyTarget(channelID, resolved)
+		proxied := fmt.Sprintf("/api/stream/%s/mesh?u=%s&sig=%s", url.PathEscape(channelID), url.QueryEscape(resolved), sig)
+		if tokenStr != "" {
+			proxied += "&token=" + url.QueryEscape(tokenStr)
+		}
+		out.WriteString(proxied + "\n")
+	}
+	return out.String()
+}
+
+func (s *SeedServer) rewritePlaylistForMesh(content, baseURLStr, channelID string) string {
+	baseURL, err := url.Parse(baseURLStr)
+	if err != nil {
+		return content
+	}
+	var out strings.Builder
+	scanner := bufio.NewScanner(strings.NewReader(content))
+	scanner.Buffer(make([]byte, 64*1024), 2*1024*1024)
+	for scanner.Scan() {
+		line := scanner.Text()
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			if strings.Contains(trimmed, `URI="`) {
+				idx := strings.Index(line, `URI="`)
+				start := idx + 5
+				if end := strings.Index(line[start:], `"`); idx >= 0 && end >= 0 {
+					if ref, pErr := url.Parse(line[start : start+end]); pErr == nil {
+						resolved := baseURL.ResolveReference(ref).String()
+						action := "seg"
+						if strings.Contains(strings.ToLower(resolved), ".m3u8") {
+							action = "playlist"
+						}
+						sig := s.signProxyTarget(channelID, resolved)
+						proxied := fmt.Sprintf("/api/mesh/stream/%s/%s?u=%s&sig=%s", url.PathEscape(channelID), action, url.QueryEscape(resolved), sig)
+						line = line[:start] + proxied + line[start+end:]
+					}
+				}
+			}
+			out.WriteString(line + "\n")
+			continue
+		}
+		refURL, pErr := url.Parse(trimmed)
+		if pErr != nil {
+			out.WriteString(line + "\n")
+			continue
+		}
+		resolved := baseURL.ResolveReference(refURL).String()
+		action := "seg"
+		if strings.Contains(strings.ToLower(resolved), ".m3u8") {
+			action = "playlist"
+		}
+		sig := s.signProxyTarget(channelID, resolved)
+		proxied := fmt.Sprintf("/api/mesh/stream/%s/%s?u=%s&sig=%s", url.PathEscape(channelID), action, url.QueryEscape(resolved), sig)
+		out.WriteString(proxied + "\n")
+	}
+	return out.String()
+}
+
+func rewriteLocalHLSForMesh(content, channelID string) string {
+	var out strings.Builder
+	scanner := bufio.NewScanner(strings.NewReader(content))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			out.WriteString(line + "\n")
+			continue
+		}
+		out.WriteString(fmt.Sprintf("/api/mesh/stream/%s/liveseg/%s\n", url.PathEscape(channelID), url.PathEscape(line)))
+	}
+	return out.String()
+}
+
+// ServeMesh handles authenticated inter-node Tailscale Mesh requests on /api/mesh/info and /api/mesh/stream/...
+func (s *SeedServer) ServeMesh(w http.ResponseWriter, r *http.Request) {
+	if s.meshMgr == nil || !s.meshMgr.AuthenticateMeshRequest(r) {
+		http.Error(w, "Unauthorized mesh peer", http.StatusForbidden)
+		return
+	}
+
+	path := strings.Trim(r.URL.Path, "/")
+	if path == "api/mesh/info" {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(s.meshMgr.LocalNodeInfo())
+		return
+	}
+
+	parts := strings.Split(path, "/")
+	// Expected: api/mesh/stream/{channelID}/{action}[/{name}]
+	if len(parts) < 5 || parts[0] != "api" || parts[1] != "mesh" || parts[2] != "stream" {
+		http.Error(w, "Invalid mesh path", http.StatusBadRequest)
+		return
+	}
+
+	channelID := parts[3]
+	action := parts[4]
+
+	s.mu.RLock()
+	cfg, exists := s.configs[channelID]
+	s.mu.RUnlock()
+	if !exists {
+		http.Error(w, "Channel not found on origin", http.StatusNotFound)
+		return
+	}
+	s.TouchStreamAndRefreshIP(channelID, r)
+
+	switch action {
+	case "master.m3u8":
+		if lh, ok := s.getLiveHLSStream(channelID); ok && lh.remuxer != nil {
+			if pl, plErr := lh.remuxer.ReadPlaylist(); plErr == nil && strings.Contains(pl, "#EXTINF:") {
+				w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+				w.Header().Set("Cache-Control", "no-store")
+				body := rewriteLocalHLSForMesh(pl, channelID)
+				s.meshMgr.AddBytesServed(int64(len(body)))
+				_, _ = w.Write([]byte(body))
+				return
+			}
+		}
+		for _, srcURL := range cfg.SourceURLs {
+			if acestream.IsAceStreamURL(srcURL) {
+				if lh, ok := s.ensureLiveHLSStream(channelID, srcURL); ok && lh.remuxer.WaitReady(r.Context(), 10*time.Second) {
+					if pl, plErr := lh.remuxer.ReadPlaylist(); plErr == nil && strings.Contains(pl, "#EXTINF:") {
+						w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+						w.Header().Set("Cache-Control", "no-store")
+						body := rewriteLocalHLSForMesh(pl, channelID)
+						s.meshMgr.AddBytesServed(int64(len(body)))
+						_, _ = w.Write([]byte(body))
+						return
+					}
+				}
+				continue
+			}
+			body, _, finalURL, isPlaylist, fetchErr := s.fetchUpstreamPlaylist(srcURL)
+			if fetchErr != nil {
+				continue
+			}
+			if isPlaylist {
+				rewritten := s.rewritePlaylistForMesh(string(body), finalURL, channelID)
+				w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+				w.Header().Set("Cache-Control", "no-store")
+				s.meshMgr.AddBytesServed(int64(len(rewritten)))
+				_, _ = w.Write([]byte(rewritten))
+				return
+			}
+			if lh, ok := s.ensureLiveHLSStream(channelID, finalURL); ok && lh.remuxer.WaitReady(r.Context(), 10*time.Second) {
+				if pl, plErr := lh.remuxer.ReadPlaylist(); plErr == nil && strings.Contains(pl, "#EXTINF:") {
+					w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+					w.Header().Set("Cache-Control", "no-store")
+					outBody := rewriteLocalHLSForMesh(pl, channelID)
+					s.meshMgr.AddBytesServed(int64(len(outBody)))
+					_, _ = w.Write([]byte(outBody))
+					return
+				}
+			}
+		}
+		http.Error(w, "Channel stream unavailable on mesh peer", http.StatusBadGateway)
+
+	case "liveseg":
+		if len(parts) < 6 {
+			http.Error(w, "Missing segment name", http.StatusBadRequest)
+			return
+		}
+		lh, ok := s.getLiveHLSStream(channelID)
+		if !ok || lh.remuxer == nil {
+			http.Error(w, "Live HLS session not active", http.StatusNotFound)
+			return
+		}
+		data, readErr := lh.remuxer.ReadSegment(parts[5])
+		if readErr != nil {
+			http.Error(w, "Segment not found", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "video/mp2t")
+		w.Header().Set("Cache-Control", "public, max-age=300")
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", len(data)))
+		s.meshMgr.AddBytesServed(int64(len(data)))
+		_, _ = w.Write(data)
+
+	case "playlist", "seg":
+		targetURL := r.URL.Query().Get("u")
+		sig := r.URL.Query().Get("sig")
+		if targetURL == "" || !s.verifyProxySig(channelID, targetURL, sig) {
+			http.Error(w, "Invalid or unsigned mesh proxy target", http.StatusForbidden)
+			return
+		}
+		req, reqErr := http.NewRequestWithContext(r.Context(), http.MethodGet, targetURL, nil)
+		if reqErr != nil {
+			http.Error(w, "Invalid URL", http.StatusBadRequest)
+			return
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+		resp, doErr := s.httpClient.Do(req)
+		if doErr != nil {
+			http.Error(w, "Upstream fetch error", http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode < 200 || resp.StatusCode >= 400 {
+			http.Error(w, fmt.Sprintf("Upstream status %d", resp.StatusCode), http.StatusBadGateway)
+			return
+		}
+		if action == "playlist" {
+			body, readErr := io.ReadAll(io.LimitReader(resp.Body, 8*1024*1024))
+			if readErr != nil {
+				http.Error(w, "Failed reading playlist", http.StatusBadGateway)
+				return
+			}
+			rewritten := s.rewritePlaylistForMesh(string(body), resp.Request.URL.String(), channelID)
+			w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+			s.meshMgr.AddBytesServed(int64(len(rewritten)))
+			_, _ = w.Write([]byte(rewritten))
+			return
+		}
+		ct := resp.Header.Get("Content-Type")
+		if ct != "" {
+			w.Header().Set("Content-Type", ct)
+		} else {
+			w.Header().Set("Content-Type", "video/mp2t")
+		}
+		n, _ := io.Copy(w, resp.Body)
+		s.meshMgr.AddBytesServed(n)
+
+	default:
+		http.Error(w, "Unknown mesh action", http.StatusNotFound)
+	}
+}
+
